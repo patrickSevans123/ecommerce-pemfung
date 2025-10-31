@@ -6,21 +6,39 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
+    "fp-ts": "^2.16.11",
+    "mongoose": "^8.19.2",
+    "neverthrow": "^8.2.0",
+    "next": "16.0.1",
+    "ramda": "^0.32.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "next": "16.0.1"
+    "rxjs": "^7.8.2",
+    "ts-pattern": "^5.9.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@jest/globals": "^30.2.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
+    "@types/ramda": "^0.31.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.0.1"
+    "eslint-config-next": "16.0.1",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^10.3.0",
+    "tailwindcss": "^4",
+    "ts-jest": "^29.4.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
   }
 }
