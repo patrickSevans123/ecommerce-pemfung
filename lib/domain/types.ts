@@ -29,8 +29,6 @@ export type OrderStatus =
   | { status: 'cancelled'; reason?: string };
 
 export type PaymentMethod =
-  | { method: 'card'; cardLast4?: string; provider?: string }
-  | { method: 'bank_transfer'; reference?: string }
   | { method: 'balance'; userId: UserId }
   | { method: 'cash_on_delivery' };
 
