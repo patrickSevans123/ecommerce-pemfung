@@ -9,7 +9,6 @@ export interface CartItemDocument {
 export interface CartDocument extends mongoose.Document {
   user: mongoose.Types.ObjectId;
   items: CartItemDocument[];
-  expiresAt: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -29,12 +28,10 @@ const CartSchema = new Schema<CartDocument, CartModel>(
   {
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
     items: { type: [CartItemSchema], default: [] },
-    expiresAt: { type: Date, default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
   },
   { timestamps: true }
 );
 
 CartSchema.index({ user: 1 });
-CartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default (mongoose.models.Cart as CartModel) || mongoose.model<CartDocument>('Cart', CartSchema);

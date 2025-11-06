@@ -4,10 +4,6 @@ import { CartInput, CartItemInput, CartValidationError } from './types';
 import { validateCart, ValidateCartOptions } from './validation';
 import { Validation, isFailure, success } from '../fp/validation';
 
-const CART_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
-
-const computeExpiresAt = () => new Date(Date.now() + CART_EXPIRATION_MS);
-
 type ObjectIdLike = string | { toString(): string };
 
 export type CartPersistenceItem = {
@@ -20,7 +16,6 @@ export type CartSnapshot = {
   _id?: ObjectIdLike;
   user: ObjectIdLike;
   items?: CartPersistenceItem[];
-  expiresAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -84,13 +79,9 @@ export const cartInputToDbItems = (items: CartItemInput[], existingItems: CartPe
 export const getOrCreateCart = async (userId: string): Promise<CartDocument> => {
   let cart = await CartModel.findOne({ user: userId }).exec();
   if (!cart) {
-    cart = await CartModel.create({ user: userId, items: [], expiresAt: computeExpiresAt() });
+    cart = await CartModel.create({ user: userId, items: [] });
   }
   return cart;
-};
-
-export const refreshCartExpiry = async (cartId: string) => {
-  await CartModel.updateOne({ _id: cartId }, { $set: { expiresAt: computeExpiresAt() } });
 };
 
 export const loadCart = async (userId: string): Promise<CartSnapshot> => {
@@ -99,7 +90,7 @@ export const loadCart = async (userId: string): Promise<CartSnapshot> => {
     return cart;
   }
 
-  const created = await CartModel.create({ user: userId, items: [], expiresAt: computeExpiresAt() });
+  const created = await CartModel.create({ user: userId, items: [] });
   return created.toObject() as CartSnapshot;
 };
 
@@ -144,7 +135,6 @@ export const persistCart = async (
     {
       $set: {
         items: cartInputToDbItems(updatedCart.items, existingItems),
-        expiresAt: computeExpiresAt(),
         updatedAt: new Date(),
       },
       $setOnInsert: { createdAt: new Date() },
