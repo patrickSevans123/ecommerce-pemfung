@@ -88,6 +88,9 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   shipping?: number;
+  discount?: number;
+  promoCode?: PromoCodeId;
+  promoCodeApplied?: string;
   total: number;
   status: OrderStatus;
   payment?: PaymentMethod;

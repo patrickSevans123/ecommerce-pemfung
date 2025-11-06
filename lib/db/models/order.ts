@@ -12,6 +12,9 @@ export interface OrderDocument extends mongoose.Document {
   items: OrderItemDocument[];
   subtotal: number;
   shipping: number;
+  discount?: number;
+  promoCode?: mongoose.Types.ObjectId;
+  promoCodeApplied?: string;
   total: number;
   status: string;
   payment?: Record<string, unknown> | null;
@@ -38,10 +41,13 @@ const OrderSchema = new Schema<OrderDocument, OrderModel>(
     items: { type: [OrderItemSchema], default: [] },
     subtotal: { type: Number, required: true },
     shipping: { type: Number, default: 10000 },
+    discount: { type: Number, default: 0 },
+    promoCode: { type: Schema.Types.ObjectId, ref: 'PromoCode', sparse: true },
+    promoCodeApplied: { type: String, sparse: true },
     total: { type: Number, required: true },
     status: { type: String, default: 'pending', index: true },
-  payment: { type: Schema.Types.Mixed },
-  shippingAddress: { type: String },
+    payment: { type: Schema.Types.Mixed },
+    shippingAddress: { type: String },
   },
   { timestamps: true }
 );
