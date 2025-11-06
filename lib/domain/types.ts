@@ -28,6 +28,13 @@ export type OrderStatus =
   | { status: 'delivered'; deliveredAt?: string }
   | { status: 'cancelled'; reason?: string };
 
+export type OrderEvent =
+  | { type: 'ConfirmPayment'; transactionId: string }
+  | { type: 'StartProcessing' }
+  | { type: 'Ship'; trackingNumber: string; estimatedDelivery: Date }
+  | { type: 'Deliver'; signature: string }
+  | { type: 'Cancel'; reason: string }
+
 export type PaymentMethod =
   | { method: 'balance'; userId: UserId }
   | { method: 'cash_on_delivery' };
