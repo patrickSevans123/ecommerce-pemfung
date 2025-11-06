@@ -208,7 +208,7 @@ async function seedDatabase() {
       // Each user gets some balance events
       const eventCount = Math.floor(Math.random() * 3) + 1;
       for (let i = 0; i < eventCount; i++) {
-        const eventType = ['credit', 'debit'][Math.floor(Math.random() * 2)];
+        const eventType = ['deposit', 'withdrawn', 'payment'][Math.floor(Math.random() * 3)];
         balanceEvents.push({
           user: user._id,
           amount: Math.floor(Math.random() * 1000000) + 100000,

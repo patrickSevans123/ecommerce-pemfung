@@ -5,7 +5,7 @@ import BalanceEvent from '../../../../lib/db/models/balanceEvent';
 
 const updateBalanceEventSchema = z.object({
   amount: z.number().optional(),
-  type: z.enum(['credit', 'debit', 'refund']).optional(),
+  type: z.enum(['deposit', 'withdrawn', 'payment']).optional(),
   reference: z.string().optional(),
 });
 

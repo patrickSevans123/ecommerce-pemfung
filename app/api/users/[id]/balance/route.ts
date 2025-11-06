@@ -6,10 +6,10 @@ import User from '../../../../../lib/db/models/user';
 // Helper function to calculate balance based on event type
 const calculateEventValue = (event: { amount: number; type: string }): number => {
   switch (event.type) {
-    case 'credit':
-    case 'refund':
+    case 'deposit':
       return event.amount;
-    case 'debit':
+    case 'payment':
+    case 'withdrawn':
       return -event.amount;
     default:
       return 0;

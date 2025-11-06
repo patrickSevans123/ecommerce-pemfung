@@ -26,8 +26,7 @@ export type OrderStatus =
   | { status: 'paid'; paidAt?: string }
   | { status: 'shipped'; shippedAt?: string; tracking?: string }
   | { status: 'delivered'; deliveredAt?: string }
-  | { status: 'cancelled'; reason?: string }
-  | { status: 'refunded'; refundedAt?: string; amount?: number };
+  | { status: 'cancelled'; reason?: string };
 
 export type PaymentMethod =
   | { method: 'card'; cardLast4?: string; provider?: string }
@@ -36,9 +35,9 @@ export type PaymentMethod =
   | { method: 'cash_on_delivery' };
 
 export type BalanceEventType =
-  | { type: 'credit' }
-  | { type: 'debit' }
-  | { type: 'refund' };
+  | { type: 'deposit' }
+  | { type: 'withdrawn' }
+  | { type: 'payment' };
 
 // Domain entities
 export interface User {
