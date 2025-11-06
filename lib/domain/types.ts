@@ -77,6 +77,7 @@ export interface Review {
 
 export interface OrderItem {
   product: ProductId;
+  seller: UserId;
   name?: string;
   price: number;
   quantity: number;
