@@ -1,23 +1,19 @@
 import mongoose, { Schema } from 'mongoose';
 
-export type DiscountKind = 'percentage' | 'fixed' | 'free_shipping' | 'buy_x_get_y';
+export type DiscountKind = 'percentage' | 'fixed' | 'free_shipping';
 
 export interface DiscountSubdocument {
   kind: DiscountKind;
   percent?: number;
   amount?: number;
-  buyQuantity?: number;
-  getQuantity?: number;
-  productId?: mongoose.Types.ObjectId;
 }
 
-export type ConditionKind = 'min_purchase_amount' | 'category_includes' | 'product_includes';
+export type ConditionKind = 'min_purchase_amount' | 'category_includes';
 
 export interface ConditionSubdocument {
   kind: ConditionKind;
   amount?: number;
   categories: string[];
-  productIds: mongoose.Types.ObjectId[];
 }
 
 export interface PromoCodeDocument extends mongoose.Document {
@@ -40,14 +36,11 @@ const DiscountSchema = new Schema<DiscountSubdocument>(
   {
     kind: {
       type: String,
-      enum: ['percentage', 'fixed', 'free_shipping', 'buy_x_get_y'],
+      enum: ['percentage', 'fixed', 'free_shipping'],
       required: true,
     },
     percent: { type: Number, min: 0, max: 100 },
     amount: { type: Number, min: 0 },
-    buyQuantity: { type: Number, min: 1 },
-    getQuantity: { type: Number, min: 1 },
-    productId: { type: Schema.Types.ObjectId, ref: 'Product' },
   },
   { _id: false }
 );
@@ -56,12 +49,11 @@ const ConditionSchema = new Schema<ConditionSubdocument>(
   {
     kind: {
       type: String,
-      enum: ['min_purchase_amount', 'category_includes', 'product_includes'],
+      enum: ['min_purchase_amount', 'category_includes'],
       required: true,
     },
     amount: { type: Number, min: 0 },
     categories: { type: [String], default: [] },
-    productIds: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
   },
   { _id: false }
 );
