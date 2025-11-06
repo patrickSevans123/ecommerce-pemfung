@@ -13,11 +13,11 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // Seed data
 const users = [
-  { email: 'john@example.com', name: 'John Doe' },
-  { email: 'jane@example.com', name: 'Jane Smith' },
-  { email: 'bob@example.com', name: 'Bob Johnson' },
-  { email: 'alice@example.com', name: 'Alice Williams' },
-  { email: 'charlie@example.com', name: 'Charlie Brown' },
+  { email: 'john@example.com', name: 'John Doe', role: 'seller' },
+  { email: 'jane@example.com', name: 'Jane Smith', role: 'seller' },
+  { email: 'bob@example.com', name: 'Bob Johnson', role: 'buyer' },
+  { email: 'alice@example.com', name: 'Alice Williams', role: 'buyer' },
+  { email: 'charlie@example.com', name: 'Charlie Brown', role: 'buyer' },
 ];
 
 const products = [
@@ -163,9 +163,16 @@ async function seedDatabase() {
     const createdUsers = await User.insertMany(users);
     console.log(`✓ Created ${createdUsers.length} users`);
 
+    // Prepare products with seller references
+    const sellers = createdUsers.filter((u) => u.role === 'seller');
+    const productsWithSellers = products.map((p, i) => ({
+      ...p,
+      seller: sellers[i % sellers.length]._id,
+    }));
+
     // Seed products
     console.log('Seeding products...');
-    const createdProducts = await Product.insertMany(products);
+    const createdProducts = await Product.insertMany(productsWithSellers);
     console.log(`✓ Created ${createdProducts.length} products`);
 
     // Seed reviews

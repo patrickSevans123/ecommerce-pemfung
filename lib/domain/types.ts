@@ -45,6 +45,7 @@ export interface User {
   id: UserId;
   email: string;
   name?: string;
+  role: 'seller' | 'buyer';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -57,6 +58,7 @@ export interface Product {
   category?: string;
   images?: string[];
   stock?: number;
+  seller: UserId;
   tags?: string[];
   avgRating?: number;
   reviewsCount?: number;

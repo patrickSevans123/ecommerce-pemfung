@@ -10,6 +10,7 @@ const createProductSchema = z.object({
   category: z.string().optional(),
   images: z.array(z.string()).optional(),
   stock: z.number().int().min(0).optional(),
+  seller: z.string().min(1),
   tags: z.array(z.string()).optional(),
 });
 

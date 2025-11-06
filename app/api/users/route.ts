@@ -6,6 +6,7 @@ import User from '../../../lib/db/models/user';
 const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().optional(),
+  role: z.enum(['seller', 'buyer']).default('buyer'),
 });
 
 // GET /api/users - List all users

@@ -7,6 +7,7 @@ export interface ProductDocument extends mongoose.Document {
   category?: string;
   images: string[];
   stock: number;
+  seller: mongoose.Types.ObjectId;
   tags: string[];
   avgRating: number;
   reviewsCount: number;
@@ -24,6 +25,7 @@ const ProductSchema = new Schema<ProductDocument, ProductModel>(
     category: { type: String, index: true },
     images: { type: [String], default: [] },
     stock: { type: Number, default: 0 },
+    seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     tags: { type: [String], default: [] },
     avgRating: { type: Number, default: 0 },
     reviewsCount: { type: Number, default: 0 }

@@ -3,6 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 export interface UserDocument extends mongoose.Document {
   email: string;
   name?: string;
+  role: 'seller' | 'buyer';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -21,6 +22,12 @@ const UserSchema = new Schema<UserDocument, UserModel>(
     name: {
       type: String,
       trim: true,
+    },
+    role: {
+      type: String,
+      enum: ['seller', 'buyer'],
+      default: 'buyer',
+      required: true,
     },
   },
   { timestamps: true }

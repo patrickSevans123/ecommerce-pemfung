@@ -9,6 +9,7 @@ export type ProductDoc = {
   category?: string;
   images?: string[];
   stock?: number;
+  seller?: string | { toString(): string };
   tags?: string[];
   avgRating?: number;
   reviewsCount?: number;
