@@ -57,7 +57,6 @@ export interface Product {
   category?: string;
   images?: string[];
   stock?: number;
-  sku?: string;
   tags?: string[];
   avgRating?: number;
   reviewsCount?: number;

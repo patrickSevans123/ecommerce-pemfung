@@ -28,7 +28,6 @@ const products = [
     category: 'Electronics',
     images: ['https://via.placeholder.com/300?text=Gaming+Laptop'],
     stock: 15,
-    sku: 'LAPTOP-001',
     tags: ['gaming', 'laptop', 'high-performance'],
   },
   {
@@ -38,7 +37,6 @@ const products = [
     category: 'Electronics',
     images: ['https://via.placeholder.com/300?text=Headphones'],
     stock: 50,
-    sku: 'AUDIO-001',
     tags: ['audio', 'wireless', 'noise-cancelling'],
   },
   {
@@ -48,7 +46,6 @@ const products = [
     category: 'Accessories',
     images: ['https://via.placeholder.com/300?text=USB+Hub'],
     stock: 100,
-    sku: 'ACC-001',
     tags: ['usb', 'hub', 'accessories'],
   },
   {
@@ -58,7 +55,6 @@ const products = [
     category: 'Electronics',
     images: ['https://via.placeholder.com/300?text=Keyboard'],
     stock: 30,
-    sku: 'KEYS-001',
     tags: ['keyboard', 'mechanical', 'gaming'],
   },
   {
@@ -68,7 +64,6 @@ const products = [
     category: 'Storage',
     images: ['https://via.placeholder.com/300?text=External+SSD'],
     stock: 25,
-    sku: 'STOR-001',
     tags: ['storage', 'ssd', 'external'],
   },
   {
@@ -78,7 +73,6 @@ const products = [
     category: 'Electronics',
     images: ['https://via.placeholder.com/300?text=Webcam'],
     stock: 20,
-    sku: 'WEB-001',
     tags: ['webcam', '4k', 'streaming'],
   },
   {
@@ -88,7 +82,6 @@ const products = [
     category: 'Accessories',
     images: ['https://via.placeholder.com/300?text=Laptop+Stand'],
     stock: 60,
-    sku: 'ACC-002',
     tags: ['stand', 'ergonomic', 'accessories'],
   },
   {
@@ -98,7 +91,6 @@ const products = [
     category: 'Electronics',
     images: ['https://via.placeholder.com/300?text=Portable+Monitor'],
     stock: 12,
-    sku: 'MON-001',
     tags: ['monitor', 'portable', 'usb-c'],
   },
 ];

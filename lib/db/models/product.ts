@@ -7,7 +7,6 @@ export interface ProductDocument extends mongoose.Document {
   category?: string;
   images: string[];
   stock: number;
-  sku?: string;
   tags: string[];
   avgRating: number;
   reviewsCount: number;
@@ -25,7 +24,6 @@ const ProductSchema = new Schema<ProductDocument, ProductModel>(
     category: { type: String, index: true },
     images: { type: [String], default: [] },
     stock: { type: Number, default: 0 },
-    sku: { type: String, sparse: true, unique: true },
     tags: { type: [String], default: [] },
     avgRating: { type: Number, default: 0 },
     reviewsCount: { type: Number, default: 0 }
@@ -35,9 +33,9 @@ const ProductSchema = new Schema<ProductDocument, ProductModel>(
 
 // text search on title + description
 ProductSchema.index({ title: 'text', description: 'text' });
-// `sku` and `category` fields already have index definitions on the field level
-// (see `sku: { unique: true }` and `category: { index: true }`) — avoid
-// duplicate schema.index() declarations which cause Mongoose warnings.
+// `category` field already has index definition on the field level
+// (see `category: { index: true }`) — avoid duplicate schema.index() declarations
+// which cause Mongoose warnings.
 ProductSchema.index({ tags: 1 });
 ProductSchema.index({ version: 1 });
 
