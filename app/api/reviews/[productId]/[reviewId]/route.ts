@@ -7,7 +7,6 @@ import { calculateRatingStats } from '../../../../../lib/fp/ratingStats';
 
 const updateReviewSchema = z.object({
   rating: z.number().int().min(1).max(5).optional(),
-  title: z.string().optional(),
   comment: z.string().optional(),
 });
 

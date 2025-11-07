@@ -9,7 +9,6 @@ const createReviewSchema = z.object({
   productId: z.string().min(1),
   userId: z.string().min(1).optional(),
   rating: z.number().int().min(1).max(5),
-  title: z.string().optional(),
   comment: z.string().optional(),
 });
 
@@ -22,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.format() }, { status: 400 });
   }
 
-  const { productId, userId, rating, title, comment } = parsed.data;
+  const { productId, userId, rating, comment } = parsed.data;
 
   await connect();
 
@@ -35,7 +34,6 @@ export async function POST(request: NextRequest) {
     product: productId,
     user: userId,
     rating,
-    title,
     comment,
   });
 

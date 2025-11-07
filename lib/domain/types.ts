@@ -73,7 +73,6 @@ export interface Review {
   product: ProductId;
   user?: UserId;
   rating: RatingValue;
-  title?: string;
   comment?: string;
   createdAt?: Date;
 }
