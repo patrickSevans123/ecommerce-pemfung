@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { connect } from '../../../../lib/db/mongoose';
 import BalanceEvent from '../../../../lib/db/models/balanceEvent';
+import {
+  validateRequestBody,
+  handleValidation,
+  successResponse,
+  notFoundError,
+} from '@/lib/api';
 
 const updateBalanceEventSchema = z.object({
   amount: z.number().optional(),
@@ -18,39 +24,34 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   const balanceEvent = await BalanceEvent.findById(id).lean();
 
   if (!balanceEvent) {
-    return NextResponse.json({ error: 'Balance event not found' }, { status: 404 });
+    return notFoundError('Balance event', id);
   }
 
-  return NextResponse.json(balanceEvent);
+  return successResponse(balanceEvent);
 }
 
 // PATCH /api/balance-events/[id] - Update a balance event
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const body = await request.json().catch(() => null);
 
-  if (!body) {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+  return handleValidation(
+    await validateRequestBody(request, updateBalanceEventSchema),
+    async (data) => {
+      await connect();
 
-  const parsed = updateBalanceEventSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Validation failed', details: parsed.error.format() }, { status: 400 });
-  }
+      const updated = await BalanceEvent.findByIdAndUpdate(
+        id,
+        { $set: data },
+        { new: true, runValidators: true }
+      ).lean();
 
-  await connect();
+      if (!updated) {
+        return notFoundError('Balance event', id);
+      }
 
-  const updated = await BalanceEvent.findByIdAndUpdate(
-    id,
-    { $set: parsed.data },
-    { new: true, runValidators: true }
-  ).lean();
-
-  if (!updated) {
-    return NextResponse.json({ error: 'Balance event not found' }, { status: 404 });
-  }
-
-  return NextResponse.json(updated);
+      return successResponse(updated);
+    }
+  );
 }
 
 // DELETE /api/balance-events/[id] - Delete a balance event
@@ -62,8 +63,8 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
   const deleted = await BalanceEvent.findByIdAndDelete(id);
 
   if (!deleted) {
-    return NextResponse.json({ error: 'Balance event not found' }, { status: 404 });
+    return notFoundError('Balance event', id);
   }
 
-  return NextResponse.json({ message: 'Balance event deleted successfully' });
+  return successResponse({ message: 'Balance event deleted successfully' });
 }

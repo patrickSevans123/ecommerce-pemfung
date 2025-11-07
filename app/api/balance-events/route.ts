@@ -1,8 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { connect } from '../../../lib/db/mongoose';
 import BalanceEvent from '../../../lib/db/models/balanceEvent';
 import User from '../../../lib/db/models/user';
+import {
+  validateRequestBody,
+  handleValidation,
+  successResponse,
+  createdResponse,
+  notFoundError,
+} from '@/lib/api';
 
 const createBalanceEventSchema = z.object({
   userId: z.string().min(1),
@@ -32,35 +39,30 @@ export async function GET(request: NextRequest) {
     .limit(100)
     .lean();
 
-  return NextResponse.json(balanceEvents);
+  return successResponse(balanceEvents);
 }
 
 // POST /api/balance-events - Create a new balance event
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+  return handleValidation(
+    await validateRequestBody(request, createBalanceEventSchema),
+    async (data) => {
+      await connect();
 
-  const parsed = createBalanceEventSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Validation failed', details: parsed.error.format() }, { status: 400 });
-  }
+      // Verify user exists
+      const userExists = await User.exists({ _id: data.userId });
+      if (!userExists) {
+        return notFoundError('User', data.userId);
+      }
 
-  await connect();
+      const created = await BalanceEvent.create({
+        user: data.userId,
+        amount: data.amount,
+        type: data.type,
+        reference: data.reference,
+      });
 
-  // Verify user exists
-  const userExists = await User.exists({ _id: parsed.data.userId });
-  if (!userExists) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
-
-  const created = await BalanceEvent.create({
-    user: parsed.data.userId,
-    amount: parsed.data.amount,
-    type: parsed.data.type,
-    reference: parsed.data.reference,
-  });
-
-  return NextResponse.json(created, { status: 201 });
+      return createdResponse(created);
+    }
+  );
 }

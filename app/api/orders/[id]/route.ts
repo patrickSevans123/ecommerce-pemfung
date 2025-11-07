@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { connect } from '@/lib/db/mongoose';
 import { Order } from '@/lib/db/models';
+import { successResponse, notFoundError, badRequestError, internalServerError } from '@/lib/api';
 import mongoose from 'mongoose';
 
 export async function GET(
@@ -14,10 +14,7 @@ export async function GET(
 
     // Validate order ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: 'Invalid order ID' },
-        { status: 400 }
-      );
+      return badRequestError('Invalid order ID');
     }
 
     // Fetch order
@@ -27,18 +24,14 @@ export async function GET(
       .populate('promoCode', 'code description');
 
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      return notFoundError('Order not found');
     }
 
-    return NextResponse.json(order, { status: 200 });
+    return successResponse(order);
   } catch (error) {
     console.error('Get order error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+    return internalServerError(
+      error instanceof Error ? error.message : 'Unknown error'
     );
   }
 }

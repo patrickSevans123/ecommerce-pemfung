@@ -1,60 +1,45 @@
-import { NextResponse } from 'next/server';
 import { connect } from '@/lib/db/mongoose';
 import { paymentPipeline } from '@/lib/payment/service';
-import { paymentProcessSchema, safeJsonParse, createValidationErrorResponse } from '@/lib/validation/schemas';
+import { paymentProcessSchema } from '@/lib/validation/schemas';
+import { validateRequestBody, handleValidation, successResponse, notFoundError, badRequestError, internalServerError, HttpStatus } from '@/lib/api';
 
 export async function POST(request: Request) {
   try {
     await connect();
 
-    // Safely parse JSON
-    const body = await safeJsonParse(request);
-    if (!body) {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
-    }
+    // Use our new validation utility
+    return await handleValidation(
+      await validateRequestBody(request, paymentProcessSchema),
+      async (data) => {
+        const { orderId, promoCode } = data;
 
-    // Validate request with Zod
-    const parsed = paymentProcessSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        createValidationErrorResponse(parsed.error),
-        { status: 400 }
-      );
-    }
+        // Execute payment pipeline (Railway Oriented Programming)
+        const result = await paymentPipeline(orderId, promoCode);
 
-    const { orderId, promoCode } = parsed.data;
+        // Handle result
+        if (result.isOk()) {
+          return successResponse(result.value);
+        } else {
+          const error = result.error;
+          const statusCode =
+            error.code === 'ORDER_NOT_FOUND' ? HttpStatus.NOT_FOUND :
+              error.code === 'INVALID_ORDER_STATUS' || error.code === 'INSUFFICIENT_BALANCE' ? HttpStatus.BAD_REQUEST :
+                HttpStatus.INTERNAL_SERVER_ERROR;
 
-    // Execute payment pipeline (Railway Oriented Programming)
-    // Step 2: applyPromo → processPayment → updateOrder (status: paid)
-    const result = await paymentPipeline(orderId, promoCode);
-
-    // Handle result
-    if (result.isOk()) {
-      return NextResponse.json(result.value, { status: 200 });
-    } else {
-      const error = result.error;
-      const statusCode =
-        error.code === 'ORDER_NOT_FOUND' ? 404 :
-          error.code === 'INVALID_ORDER_STATUS' || error.code === 'INSUFFICIENT_BALANCE' ? 400 :
-            500;
-
-      return NextResponse.json(
-        {
-          error: error.message,
-          code: error.code,
-          details: error.details
-        },
-        { status: statusCode }
-      );
-    }
+          if (statusCode === HttpStatus.NOT_FOUND) {
+            return notFoundError(error.message);
+          } else if (statusCode === HttpStatus.BAD_REQUEST) {
+            return badRequestError(error.message, error.details);
+          } else {
+            return internalServerError(error.message);
+          }
+        }
+      }
+    );
   } catch (error) {
     console.error('Payment processing error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+    return internalServerError(
+      error instanceof Error ? error.message : 'Unknown error'
     );
   }
 }

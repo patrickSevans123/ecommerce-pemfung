@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { connect } from '../../../../../lib/db/mongoose';
 import BalanceEvent from '../../../../../lib/db/models/balanceEvent';
 import User from '../../../../../lib/db/models/user';
 import { sumBalanceEvents } from '@/lib/balance';
+import { successResponse, notFoundError } from '@/lib/api';
 
 // GET /api/users/[id]/balance - Get user's current balance
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -13,7 +14,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   // Verify user exists
   const userExists = await User.exists({ _id: id });
   if (!userExists) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return notFoundError('User', id);
   }
 
   // Fetch all balance events for the user
@@ -24,7 +25,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   // Calculate current balance using functional approach
   const currentBalance = sumBalanceEvents(balanceEvents);
 
-  return NextResponse.json({
+  return successResponse({
     userId: id,
     balance: currentBalance,
     eventCount: balanceEvents.length,
