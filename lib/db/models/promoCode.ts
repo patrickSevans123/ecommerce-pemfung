@@ -73,8 +73,5 @@ const PromoCodeSchema = new Schema<PromoCodeDocument, PromoCodeModel>(
   { timestamps: true }
 );
 
-PromoCodeSchema.index({ code: 1 });
-PromoCodeSchema.index({ expiresAt: 1 });
-
 export default (mongoose.models.PromoCode as PromoCodeModel) ||
   mongoose.model<PromoCodeDocument>('PromoCode', PromoCodeSchema);
