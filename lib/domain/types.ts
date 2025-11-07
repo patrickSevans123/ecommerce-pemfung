@@ -22,17 +22,15 @@ export interface RatingStats {
 // Discriminated unions (ADTs)
 export type OrderStatus =
   | { status: 'pending' }
-  | { status: 'confirmed' }
   | { status: 'paid'; paidAt?: string }
   | { status: 'shipped'; shippedAt?: string; tracking?: string }
   | { status: 'delivered'; deliveredAt?: string }
   | { status: 'cancelled'; reason?: string };
 
 export type OrderEvent =
-  | { type: 'ConfirmPayment'; transactionId: string }
-  | { type: 'StartProcessing' }
-  | { type: 'Ship'; trackingNumber: string; estimatedDelivery: Date }
-  | { type: 'Deliver'; signature: string }
+  | { type: 'ConfirmPayment' }
+  | { type: 'Ship'; trackingNumber: string }
+  | { type: 'Deliver' }
   | { type: 'Cancel'; reason: string }
 
 export type PaymentMethod =

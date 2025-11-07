@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import { OrderStatus } from '@/lib/domain/types';
 
 export interface OrderItemDocument {
   product: mongoose.Types.ObjectId;
@@ -17,7 +18,7 @@ export interface OrderDocument extends mongoose.Document {
   promoCode?: mongoose.Types.ObjectId;
   promoCodeApplied?: string;
   total: number;
-  status: string;
+  status: OrderStatus;
   payment?: Record<string, unknown> | null;
   shippingAddress?: string | null;
   createdAt?: Date;
@@ -47,7 +48,7 @@ const OrderSchema = new Schema<OrderDocument, OrderModel>(
     promoCode: { type: Schema.Types.ObjectId, ref: 'PromoCode', sparse: true },
     promoCodeApplied: { type: String, sparse: true },
     total: { type: Number, required: true },
-    status: { type: String, default: 'pending', index: true },
+    status: { type: Schema.Types.Mixed, default: { status: 'pending' }, index: true },
     payment: { type: Schema.Types.Mixed },
     shippingAddress: { type: String },
   },
