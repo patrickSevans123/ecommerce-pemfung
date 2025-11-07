@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { connect } from '@/lib/db/mongoose';
 import { Order } from '@/lib/db/models';
-import { OrderEvent } from '@/lib/domain/types';
-import { transitionOrder, isValidTransition, validateEvent, getAllowedEvents } from '@/lib/order/stateMachine';
+import { transitionOrder, isValidTransition, getAllowedEvents } from '@/lib/order/stateMachine';
+import { orderTransitionSchema, safeJsonParse, createValidationErrorResponse } from '@/lib/validation/schemas';
 import mongoose from 'mongoose';
 
 export async function POST(
@@ -13,8 +13,6 @@ export async function POST(
     await connect();
 
     const { id } = await params;
-    const body = await request.json();
-    const { event } = body as { event: OrderEvent };
 
     // Validate order ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -24,22 +22,25 @@ export async function POST(
       );
     }
 
-    // Validate event
-    if (!event || !event.type) {
+    // Safely parse JSON
+    const body = await safeJsonParse(request);
+    if (!body) {
       return NextResponse.json(
-        { error: 'Missing or invalid event' },
+        { error: 'Invalid JSON body' },
         { status: 400 }
       );
     }
 
-    // Validate event data
-    const eventValidation = validateEvent(event);
-    if (!eventValidation.valid) {
+    // Validate request with Zod
+    const parsed = orderTransitionSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: eventValidation.error },
+        createValidationErrorResponse(parsed.error),
         { status: 400 }
       );
     }
+
+    const { event } = parsed.data;
 
     // Fetch order
     const order = await Order.findById(id);

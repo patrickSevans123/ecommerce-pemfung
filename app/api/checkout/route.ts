@@ -2,29 +2,31 @@ import { NextResponse } from 'next/server';
 import { connect } from '@/lib/db/mongoose';
 import { checkoutPipeline } from '@/lib/payment/service';
 import { PaymentMethod } from '@/lib/domain/types';
+import { checkoutSchema, safeJsonParse, createValidationErrorResponse } from '@/lib/validation/schemas';
 
 export async function POST(request: Request) {
   try {
     await connect();
 
-    const body = await request.json();
-    const { userId, paymentMethod, shippingAddress } = body;
-
-    // Validate request
-    if (!userId || !paymentMethod || !shippingAddress) {
+    // Safely parse JSON
+    const body = await safeJsonParse(request);
+    if (!body) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, paymentMethod, shippingAddress' },
+        { error: 'Invalid JSON body' },
         { status: 400 }
       );
     }
 
-    // Validate payment method
-    if (paymentMethod !== 'balance' && paymentMethod !== 'cash_on_delivery') {
+    // Validate request with Zod
+    const parsed = checkoutSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid payment method. Must be "balance" or "cash_on_delivery"' },
+        createValidationErrorResponse(parsed.error),
         { status: 400 }
       );
     }
+
+    const { userId, paymentMethod, shippingAddress } = parsed.data;
 
     // Build payment method object
     const payment: PaymentMethod = paymentMethod === 'balance'

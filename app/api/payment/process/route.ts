@@ -1,21 +1,31 @@
 import { NextResponse } from 'next/server';
 import { connect } from '@/lib/db/mongoose';
 import { paymentPipeline } from '@/lib/payment/service';
+import { paymentProcessSchema, safeJsonParse, createValidationErrorResponse } from '@/lib/validation/schemas';
 
 export async function POST(request: Request) {
   try {
     await connect();
 
-    const body = await request.json();
-    const { orderId, promoCode } = body;
-
-    // Validate request
-    if (!orderId) {
+    // Safely parse JSON
+    const body = await safeJsonParse(request);
+    if (!body) {
       return NextResponse.json(
-        { error: 'Missing required field: orderId' },
+        { error: 'Invalid JSON body' },
         { status: 400 }
       );
     }
+
+    // Validate request with Zod
+    const parsed = paymentProcessSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        createValidationErrorResponse(parsed.error),
+        { status: 400 }
+      );
+    }
+
+    const { orderId, promoCode } = parsed.data;
 
     // Execute payment pipeline (Railway Oriented Programming)
     // Step 2: applyPromo → processPayment → updateOrder (status: paid)
