@@ -4,19 +4,15 @@ import { connect } from '../../../../lib/db/mongoose';
 import PromoCode from '../../../../lib/db/models/promoCode';
 
 const discountSchema = z.object({
-  kind: z.enum(['percentage', 'fixed', 'free_shipping', 'buy_x_get_y']),
+  kind: z.enum(['percentage', 'fixed', 'free_shipping']),
   percent: z.number().min(0).max(100).optional(),
   amount: z.number().nonnegative().optional(),
-  buyQuantity: z.number().int().positive().optional(),
-  getQuantity: z.number().int().positive().optional(),
-  productId: z.string().optional(),
 });
 
 const conditionSchema = z.object({
-  kind: z.enum(['min_purchase_amount', 'category_includes', 'product_includes']),
+  kind: z.enum(['min_purchase_amount', 'category_includes']),
   amount: z.number().nonnegative().optional(),
   categories: z.array(z.string()).optional(),
-  productIds: z.array(z.string()).optional(),
 });
 
 const updatePromoCodeSchema = z.object({
@@ -25,7 +21,7 @@ const updatePromoCodeSchema = z.object({
   discount: discountSchema.optional(),
   conditions: z.array(conditionSchema).optional(),
   freeShippingAmount: z.number().nonnegative().optional(),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.iso.datetime().optional(),
   usageLimit: z.number().int().positive().optional(),
   active: z.boolean().optional(),
 });
