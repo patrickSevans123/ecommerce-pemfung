@@ -24,8 +24,8 @@ export async function GET(request: Request) {
   const baseQuery: FilterQuery<ProductDocument> = {};
   if (q) baseQuery.$text = { $search: q };
   if (!q && category) baseQuery.category = category;
-  if (!q && typeof minPrice === 'number') baseQuery.price = { ...(baseQuery.price || {}), $gte: minPrice };
-  if (!q && typeof maxPrice === 'number') baseQuery.price = { ...(baseQuery.price || {}), $lte: maxPrice };
+  if (!q && typeof minPrice === 'number') baseQuery.price = { ...baseQuery.price, $gte: minPrice };
+  if (!q && typeof maxPrice === 'number') baseQuery.price = { ...baseQuery.price, $lte: maxPrice };
   if (inStock === true) baseQuery.stock = { $gt: 0 };
 
   // fetch candidates from DB
