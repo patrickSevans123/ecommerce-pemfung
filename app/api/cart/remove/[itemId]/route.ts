@@ -43,5 +43,5 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
   }
 
   const freshCart = await loadCart(parsed.data.userId);
-  return NextResponse.json({ cart: serializeCartSnapshot(freshCart) }, { status: 200 });
+  return NextResponse.json(serializeCartSnapshot(freshCart), { status: 200 });
 }
