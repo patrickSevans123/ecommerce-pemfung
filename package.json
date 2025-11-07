@@ -11,7 +11,10 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "db:test": "tsx scripts/test-connection.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "db:drop": "tsx scripts/drop-and-reseed.ts",
+    "db:index": "tsx scripts/check-index.ts",
+    "db:reset": "npm run db:drop && npm run db:seed"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
