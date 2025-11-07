@@ -2,23 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connect } from '../../../../../lib/db/mongoose';
 import BalanceEvent from '../../../../../lib/db/models/balanceEvent';
 import User from '../../../../../lib/db/models/user';
-
-// Helper function to calculate balance based on event type
-const calculateEventValue = (event: { amount: number; type: string }): number => {
-  switch (event.type) {
-    case 'deposit':
-      return event.amount;
-    case 'payment':
-    case 'withdrawn':
-      return -event.amount;
-    default:
-      return 0;
-  }
-};
-
-// Functional composition: sum of all event values
-const sumBalanceEvents = (events: Array<{ amount: number; type: string }>): number =>
-  events.reduce((total, event) => total + calculateEventValue(event), 0);
+import { sumBalanceEvents } from '@/lib/balance';
 
 // GET /api/users/[id]/balance - Get user's current balance
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
