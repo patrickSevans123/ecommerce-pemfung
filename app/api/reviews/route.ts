@@ -1,51 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { connect } from '../../../lib/db/mongoose';
 import Product from '../../../lib/db/models/product';
 import Review from '../../../lib/db/models/review';
 import { calculateRatingStats } from '../../../lib/fp/ratingStats';
+import {
+  validateRequestBody,
+  handleValidation,
+  notFoundError,
+  createdResponse,
+} from '@/lib/api';
 
 const createReviewSchema = z.object({
   productId: z.string().min(1),
   userId: z.string().min(1).optional(),
   rating: z.number().int().min(1).max(5),
-  title: z.string().optional(),
   comment: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  return handleValidation(
+    await validateRequestBody(request, createReviewSchema),
+    async (data) => {
+      const { productId, userId, rating, comment } = data;
 
-  const parsed = createReviewSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Validation failed', details: parsed.error.format() }, { status: 400 });
-  }
+      await connect();
 
-  const { productId, userId, rating, title, comment } = parsed.data;
+      const product = await Product.findById(productId);
+      if (!product) {
+        return notFoundError('Product', productId);
+      }
 
-  await connect();
+      const reviewDoc = await Review.create({
+        product: productId,
+        user: userId,
+        rating,
+        comment,
+      });
 
-  const product = await Product.findById(productId);
-  if (!product) {
-    return NextResponse.json({ error: 'Product not found' }, { status: 404 });
-  }
+      const reviews = await Review.find({ product: productId }).sort({ createdAt: -1 }).lean();
+      const stats = calculateRatingStats(reviews.map((r) => ({ rating: r.rating })));
 
-  const reviewDoc = await Review.create({
-    product: productId,
-    user: userId,
-    rating,
-    title,
-    comment,
-  });
+      await Product.findByIdAndUpdate(productId, {
+        avgRating: stats.average,
+        reviewsCount: stats.count,
+      });
 
-  const reviews = await Review.find({ product: productId }).sort({ createdAt: -1 }).lean();
-  const stats = calculateRatingStats(reviews.map((r) => ({ rating: r.rating })));
-
-  await Product.findByIdAndUpdate(productId, {
-    avgRating: stats.average,
-    reviewsCount: stats.count,
-  });
-
-  return NextResponse.json({ review: reviewDoc.toObject(), stats }, { status: 201 });
+      return createdResponse({ review: reviewDoc.toObject(), stats });
+    }
+  );
 }

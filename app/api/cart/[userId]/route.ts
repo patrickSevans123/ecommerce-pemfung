@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { connect } from '../../../../lib/db/mongoose';
 import CartModel from '../../../../lib/db/models/cart';
 import { serializeCartSnapshot } from '../../../../lib/cart/service';
 import type { CartSnapshot } from '../../../../lib/cart/service';
+import { successResponse } from '@/lib/api';
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ userId: string }> }) {
   const { userId } = await context.params;
@@ -13,8 +14,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ us
 
   if (!cartDoc) {
     const created = await CartModel.create({ user: userId, items: [] });
-    return NextResponse.json({ cart: serializeCartSnapshot(created.toObject() as CartSnapshot) }, { status: 200 });
+    return successResponse({ cart: serializeCartSnapshot(created.toObject() as CartSnapshot) });
   }
 
-  return NextResponse.json({ cart: serializeCartSnapshot(cartDoc) }, { status: 200 });
+  return successResponse({ cart: serializeCartSnapshot(cartDoc) });
 }

@@ -1,7 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { connect } from '../../../lib/db/mongoose';
 import User from '../../../lib/db/models/user';
+import {
+  validateRequestBody,
+  handleValidation,
+  createdResponse,
+  successResponse,
+  conflictError,
+} from '@/lib/api';
 
 const createUserSchema = z.object({
   email: z.string().email(),
@@ -23,30 +30,24 @@ export async function GET(request: NextRequest) {
 
   const users = await User.find(filter).sort({ createdAt: -1 }).limit(100).lean();
 
-  return NextResponse.json(users);
+  return successResponse(users);
 }
 
 // POST /api/users - Create a new user
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+  return handleValidation(
+    await validateRequestBody(request, createUserSchema),
+    async (data) => {
+      await connect();
 
-  const parsed = createUserSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Validation failed', details: parsed.error.format() }, { status: 400 });
-  }
+      // Check if user already exists
+      const existing = await User.findOne({ email: data.email });
+      if (existing) {
+        return conflictError('User with this email already exists');
+      }
 
-  await connect();
-
-  // Check if user already exists
-  const existing = await User.findOne({ email: parsed.data.email });
-  if (existing) {
-    return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
-  }
-
-  const created = await User.create(parsed.data);
-
-  return NextResponse.json(created, { status: 201 });
+      const created = await User.create(data);
+      return createdResponse(created);
+    }
+  );
 }

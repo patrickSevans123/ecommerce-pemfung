@@ -1,13 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { connect } from '../../../../../lib/db/mongoose';
 import Product from '../../../../../lib/db/models/product';
 import Review from '../../../../../lib/db/models/review';
 import { calculateRatingStats } from '../../../../../lib/fp/ratingStats';
+import {
+  validateRequestBody,
+  handleValidation,
+  successResponse,
+  notFoundError,
+  badRequestError,
+} from '@/lib/api';
 
 const updateReviewSchema = z.object({
   rating: z.number().int().min(1).max(5).optional(),
-  title: z.string().optional(),
   comment: z.string().optional(),
 });
 
@@ -20,57 +26,52 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ pr
   const review = await Review.findById(reviewId).lean();
 
   if (!review) {
-    return NextResponse.json({ error: 'Review not found' }, { status: 404 });
+    return notFoundError('Review', reviewId);
   }
 
-  return NextResponse.json(review);
+  return successResponse(review);
 }
 
 // PATCH /api/reviews/[productId]/[reviewId] - Update a review
 export async function PATCH(request: NextRequest, context: { params: Promise<{ productId: string; reviewId: string }> }) {
   const { productId, reviewId } = await context.params;
-  const body = await request.json().catch(() => null);
 
-  if (!body) {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+  return handleValidation(
+    await validateRequestBody(request, updateReviewSchema),
+    async (data) => {
+      await connect();
 
-  const parsed = updateReviewSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Validation failed', details: parsed.error.format() }, { status: 400 });
-  }
+      // Check if review exists and belongs to the product
+      const existingReview = await Review.findById(reviewId);
+      if (!existingReview) {
+        return notFoundError('Review', reviewId);
+      }
 
-  await connect();
+      if (existingReview.product.toString() !== productId) {
+        return badRequestError('Review does not belong to this product');
+      }
 
-  // Check if review exists and belongs to the product
-  const existingReview = await Review.findById(reviewId);
-  if (!existingReview) {
-    return NextResponse.json({ error: 'Review not found' }, { status: 404 });
-  }
+      // Update the review
+      const updated = await Review.findByIdAndUpdate(
+        reviewId,
+        { $set: data },
+        { new: true, runValidators: true }
+      ).lean();
 
-  if (existingReview.product.toString() !== productId) {
-    return NextResponse.json({ error: 'Review does not belong to this product' }, { status: 400 });
-  }
+      // Recalculate product rating if rating was changed
+      if (data.rating !== undefined) {
+        const allReviews = await Review.find({ product: productId }).lean();
+        const stats = calculateRatingStats(allReviews.map((r) => ({ rating: r.rating })));
 
-  // Update the review
-  const updated = await Review.findByIdAndUpdate(
-    reviewId,
-    { $set: parsed.data },
-    { new: true, runValidators: true }
-  ).lean();
+        await Product.findByIdAndUpdate(productId, {
+          avgRating: stats.average,
+          reviewsCount: stats.count,
+        });
+      }
 
-  // Recalculate product rating if rating was changed
-  if (parsed.data.rating !== undefined) {
-    const allReviews = await Review.find({ product: productId }).lean();
-    const stats = calculateRatingStats(allReviews.map((r) => ({ rating: r.rating })));
-
-    await Product.findByIdAndUpdate(productId, {
-      avgRating: stats.average,
-      reviewsCount: stats.count,
-    });
-  }
-
-  return NextResponse.json(updated);
+      return successResponse(updated);
+    }
+  );
 }
 
 // DELETE /api/reviews/[productId]/[reviewId] - Delete a review
@@ -82,11 +83,11 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
   // Check if review exists and belongs to the product
   const existingReview = await Review.findById(reviewId);
   if (!existingReview) {
-    return NextResponse.json({ error: 'Review not found' }, { status: 404 });
+    return notFoundError('Review', reviewId);
   }
 
   if (existingReview.product.toString() !== productId) {
-    return NextResponse.json({ error: 'Review does not belong to this product' }, { status: 400 });
+    return badRequestError('Review does not belong to this product');
   }
 
   // Delete the review
@@ -101,5 +102,5 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     reviewsCount: stats.count,
   });
 
-  return NextResponse.json({ message: 'Review deleted successfully' });
+  return successResponse({ message: 'Review deleted successfully' });
 }

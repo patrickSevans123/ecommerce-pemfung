@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
 import { connect } from '../../../../lib/db/mongoose';
 import Product from '../../../../lib/db/models/product';
 import { searchProducts, ProductFilterOptions } from '../../../../lib/fp/productFilters';
 import type { FilterQuery } from 'mongoose';
 import type { ProductDocument } from '../../../../lib/db/models/product';
+import { successResponse } from '@/lib/api';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -24,8 +24,8 @@ export async function GET(request: Request) {
   const baseQuery: FilterQuery<ProductDocument> = {};
   if (q) baseQuery.$text = { $search: q };
   if (!q && category) baseQuery.category = category;
-  if (!q && typeof minPrice === 'number') baseQuery.price = { ...(baseQuery.price || {}), $gte: minPrice };
-  if (!q && typeof maxPrice === 'number') baseQuery.price = { ...(baseQuery.price || {}), $lte: maxPrice };
+  if (!q && typeof minPrice === 'number') baseQuery.price = { ...baseQuery.price, $gte: minPrice };
+  if (!q && typeof maxPrice === 'number') baseQuery.price = { ...baseQuery.price, $lte: maxPrice };
   if (inStock === true) baseQuery.stock = { $gt: 0 };
 
   // fetch candidates from DB
@@ -34,5 +34,5 @@ export async function GET(request: Request) {
   // apply remaining filters (minRating, and fallback text filtering if needed)
   const results = searchProducts(candidates, opts);
 
-  return NextResponse.json(results);
+  return successResponse(results);
 }

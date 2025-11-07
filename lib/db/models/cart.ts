@@ -32,6 +32,4 @@ const CartSchema = new Schema<CartDocument, CartModel>(
   { timestamps: true }
 );
 
-CartSchema.index({ user: 1 });
-
 export default (mongoose.models.Cart as CartModel) || mongoose.model<CartDocument>('Cart', CartSchema);

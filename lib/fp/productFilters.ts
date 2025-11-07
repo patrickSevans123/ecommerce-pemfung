@@ -1,3 +1,4 @@
+import { pipe } from "./utils";
 
 // Product shape (loose) — matches the Mongoose lean() documents we return
 export type ProductDoc = {
@@ -60,23 +61,34 @@ export const byText = (q?: string) => (p: ProductDoc) => {
   return hay.includes(needle);
 };
 
-// Compose multiple predicates using Ramda.allPass
+// Higher-order function: creates a filter function from a predicate
+const filterBy = (predicate: (p: ProductDoc) => boolean) =>
+  (products: ProductDoc[]): ProductDoc[] => products.filter(predicate);
+
+// Compose multiple predicates using allPass pattern
 export const composePredicates = (preds: Array<(p: ProductDoc) => boolean>) => {
   if (!preds || preds.length === 0) return () => true;
   return (product: ProductDoc) => preds.every((predicate) => predicate(product));
 };
 
-// Apply filters to an array of products (pure)
-export const applyFilters = (products: ProductDoc[], opts: ProductFilterOptions) => {
-  const preds: Array<(p: ProductDoc) => boolean> = [];
-  preds.push(byText(opts.q));
-  preds.push(byCategory(opts.category));
-  preds.push(byPriceRange(opts.minPrice, opts.maxPrice));
-  preds.push(byRating(opts.minRating));
-  preds.push(byInStock(opts.inStock));
+// Apply filters using pipe composition (functional pipeline)
+export const applyFilters = (products: ProductDoc[], opts: ProductFilterOptions): ProductDoc[] => {
+  // Build array of filter functions based on provided options
+  const filterFns: Array<(ps: ProductDoc[]) => ProductDoc[]> = [];
 
-  const filterFn = composePredicates(preds);
-  return products.filter(filterFn);
+  if (opts.q) filterFns.push(filterBy(byText(opts.q)));
+  if (opts.category) filterFns.push(filterBy(byCategory(opts.category)));
+  if (opts.minPrice !== undefined || opts.maxPrice !== undefined) {
+    filterFns.push(filterBy(byPriceRange(opts.minPrice, opts.maxPrice)));
+  }
+  if (opts.minRating !== undefined) filterFns.push(filterBy(byRating(opts.minRating)));
+  if (opts.inStock !== undefined) filterFns.push(filterBy(byInStock(opts.inStock)));
+
+  // If no filters, return products as-is
+  if (filterFns.length === 0) return products;
+
+  // Compose all filter functions into a single pipeline
+  return pipe(...filterFns)(products);
 };
 
 export const searchProducts = (products: ProductDoc[], opts: ProductFilterOptions) => applyFilters(products, opts);

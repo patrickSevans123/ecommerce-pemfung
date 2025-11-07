@@ -22,15 +22,18 @@ export interface RatingStats {
 // Discriminated unions (ADTs)
 export type OrderStatus =
   | { status: 'pending' }
-  | { status: 'confirmed' }
   | { status: 'paid'; paidAt?: string }
   | { status: 'shipped'; shippedAt?: string; tracking?: string }
   | { status: 'delivered'; deliveredAt?: string }
   | { status: 'cancelled'; reason?: string };
 
+export type OrderEvent =
+  | { type: 'ConfirmPayment' }
+  | { type: 'Ship'; trackingNumber: string }
+  | { type: 'Deliver' }
+  | { type: 'Cancel'; reason: string }
+
 export type PaymentMethod =
-  | { method: 'card'; cardLast4?: string; provider?: string }
-  | { method: 'bank_transfer'; reference?: string }
   | { method: 'balance'; userId: UserId }
   | { method: 'cash_on_delivery' };
 
@@ -70,7 +73,6 @@ export interface Review {
   product: ProductId;
   user?: UserId;
   rating: RatingValue;
-  title?: string;
   comment?: string;
   createdAt?: Date;
 }

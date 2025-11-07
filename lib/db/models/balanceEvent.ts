@@ -13,7 +13,7 @@ type BalanceEventModel = mongoose.Model<BalanceEventDocument>;
 
 const BalanceEventSchema = new Schema<BalanceEventDocument, BalanceEventModel>(
   {
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, required: true },
     type: { type: String, enum: ['deposit', 'withdrawn', 'payment'], required: true },
     reference: { type: String },

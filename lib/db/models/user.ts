@@ -33,6 +33,4 @@ const UserSchema = new Schema<UserDocument, UserModel>(
   { timestamps: true }
 );
 
-UserSchema.index({ email: 1 }, { unique: true });
-
 export default (mongoose.models.User as UserModel) || mongoose.model<UserDocument>('User', UserSchema);
