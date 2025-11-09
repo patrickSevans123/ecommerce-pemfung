@@ -17,6 +17,7 @@
     "db:reset": "npm run db:drop && npm run db:seed"
   },
   "dependencies": {
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "fp-ts": "^2.16.11",
     "mongoose": "^8.19.2",
