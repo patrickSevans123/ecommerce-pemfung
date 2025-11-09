@@ -45,6 +45,42 @@ export interface PaymentContext {
 // Re-export types
 export type { PaymentError, PaymentSuccess };
 
+// Helper: Validate single cart item stock
+const validateItemStock = (
+  productMap: Map<string, ProductDocument>
+) => (item: CartItemDocument): ResultAsync<void, PaymentError> => {
+  const product = productMap.get(item.product.toString());
+
+  if (!product) {
+    return ResultAsync.fromSafePromise(
+      Promise.reject(
+        createPaymentError(
+          PaymentErrorCodes.PRODUCT_NOT_FOUND,
+          `Product ${item.product} not found`
+        )
+      )
+    );
+  }
+
+  if ((product.stock || 0) < item.quantity) {
+    return ResultAsync.fromSafePromise(
+      Promise.reject(insufficientStockError(product.title, product.stock || 0, item.quantity))
+    );
+  }
+
+  return okAsync(undefined);
+};
+
+// Helper: Validate all items stock using functional composition
+const validateAllItemsStock = (
+  items: CartItemDocument[],
+  productMap: Map<string, ProductDocument>
+): ResultAsync<void, PaymentError> => {
+  const validations = items.map(validateItemStock(productMap));
+
+  return ResultAsync.combine(validations).map(() => undefined);
+};
+
 // Step 1: Validate Cart
 export const validateCart = (
   userId: UserId,
@@ -79,19 +115,10 @@ export const validateCart = (
         products.map((p: ProductDocument) => [(p._id as mongoose.Types.ObjectId).toString(), p])
       );
 
-      // Validate stock for all items
-      for (const item of cart.items) {
-        const product = productMap.get(item.product.toString());
-        if (!product) {
-          throw createPaymentError(
-            PaymentErrorCodes.PRODUCT_NOT_FOUND,
-            `Product ${item.product} not found`
-          );
-        }
-
-        if ((product.stock || 0) < item.quantity) {
-          throw insufficientStockError(product.title, product.stock || 0, item.quantity);
-        }
+      // Validate stock using functional approach
+      const stockValidation = await validateAllItemsStock(cart.items, productMap);
+      if (stockValidation.isErr()) {
+        throw stockValidation.error;
       }
 
       // Calculate subtotal
@@ -196,6 +223,39 @@ export const processPayment = (
   return okAsync(context);
 };
 
+// Helper: Create order item from cart item
+const createOrderItem = (
+  productMap: Map<string, ProductDocument>
+) => (item: CartItemDocument) => {
+  const product = productMap.get(item.product.toString());
+  return {
+    product: item.product,
+    seller: product!.seller,
+    name: product!.title,
+    price: product!.price,
+    quantity: item.quantity,
+  };
+};
+
+// Helper: Update product stock for single item
+const updateProductStock = (
+  session: mongoose.ClientSession
+) => (item: CartItemDocument): Promise<unknown> => {
+  return Product.findByIdAndUpdate(
+    item.product,
+    { $inc: { stock: -item.quantity } },
+    { session }
+  );
+};
+
+// Helper: Update all product stocks using Promise.all
+const updateAllProductStocks = (
+  items: CartItemDocument[],
+  session: mongoose.ClientSession
+): Promise<unknown[]> => {
+  return Promise.all(items.map(updateProductStock(session)));
+};
+
 // Step 4: Create Order
 export const createOrder = (
   context: PromoAppliedContext
@@ -208,17 +268,8 @@ export const createOrder = (
       try {
         const { cart, products, userId, subtotal, shipping, discount, total, promoCode, shippingAddress, paymentMethod } = context;
 
-        // Create order items with product details at time of purchase
-        const orderItems = cart.items.map((item: CartItemDocument) => {
-          const product = products.get(item.product.toString());
-          return {
-            product: item.product,
-            seller: product!.seller,
-            name: product!.title,
-            price: product!.price,
-            quantity: item.quantity,
-          };
-        });
+        // Create order items using map (functional)
+        const orderItems = cart.items.map(createOrderItem(products));
 
         // Create order with pending status
         const order = await Order.create([{
@@ -236,13 +287,7 @@ export const createOrder = (
         }], { session });
 
         // Update product stock
-        for (const item of cart.items) {
-          await Product.findByIdAndUpdate(
-            item.product,
-            { $inc: { stock: -item.quantity } },
-            { session }
-          );
-        }
+        await updateAllProductStocks(cart.items, session);
 
         // Update promo code usage if applied
         if (promoCode) {
