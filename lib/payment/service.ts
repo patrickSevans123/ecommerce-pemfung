@@ -350,7 +350,7 @@ const processBalancePayment = (
       // Calculate user's current balance
       const balanceEvents = await BalanceEvent.find({ user: order.user });
       const currentBalance = balanceEvents.reduce((sum, event) => {
-        if (event.type === 'deposit') {
+        if (event.type === 'deposit' || event.type === 'refund') {
           return sum + event.amount;
         } else if (event.type === 'withdrawn' || event.type === 'payment') {
           return sum - event.amount;

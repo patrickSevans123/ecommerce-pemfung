@@ -34,6 +34,10 @@ export const orderTransitionSchema = z.object({
       type: z.literal('Cancel'),
       reason: z.string().min(1, 'Cancellation reason is required')
     }),
+    z.object({
+      type: z.literal('Refund'),
+      reason: z.string().min(1, 'Refund reason is required')
+    }),
   ]),
 });
 
