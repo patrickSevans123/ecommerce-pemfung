@@ -25,13 +25,15 @@ export type OrderStatus =
   | { status: 'paid'; paidAt?: string }
   | { status: 'shipped'; shippedAt?: string; tracking?: string }
   | { status: 'delivered'; deliveredAt?: string }
-  | { status: 'cancelled'; reason?: string };
+  | { status: 'cancelled'; reason?: string }
+  | { status: 'refunded'; refundedAt?: string; reason?: string };
 
 export type OrderEvent =
   | { type: 'ConfirmPayment' }
   | { type: 'Ship'; trackingNumber: string }
   | { type: 'Deliver' }
   | { type: 'Cancel'; reason: string }
+  | { type: 'Refund'; reason: string }
 
 export type PaymentMethod =
   | { method: 'balance'; userId: UserId }
@@ -40,7 +42,8 @@ export type PaymentMethod =
 export type BalanceEventType =
   | { type: 'deposit' }
   | { type: 'withdrawn' }
-  | { type: 'payment' };
+  | { type: 'payment' }
+  | { type: 'refund' };
 
 // Domain entities
 export interface User {

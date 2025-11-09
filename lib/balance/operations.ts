@@ -8,7 +8,7 @@
  * - Composition over imperative logic
  */
 
-export type BalanceEventType = 'deposit' | 'payment' | 'withdrawn';
+export type BalanceEventType = 'deposit' | 'payment' | 'withdrawn' | 'refund';
 
 export interface BalanceEventRecord {
   amount: number;
@@ -21,11 +21,13 @@ export interface BalanceEventRecord {
  * - deposit: +1 (adds to balance)
  * - payment: -1 (deducts from balance)
  * - withdrawn: -1 (deducts from balance)
+ * - refund: +1 (adds to balance)
  */
 export const eventTypeMultiplier: Record<BalanceEventType, number> = {
   deposit: 1,
   payment: -1,
   withdrawn: -1,
+  refund: 1,
 } as const;
 
 /**
@@ -101,12 +103,13 @@ export const sumEventsByType = (
  * 
  * @example
  * getBalanceStats(events)
- * // => { balance: 70, deposits: 100, payments: 20, withdrawals: 10 }
+ * // => { balance: 70, deposits: 100, payments: 20, withdrawals: 10, refunds: 0 }
  */
 export const getBalanceStats = (events: BalanceEventRecord[]) => ({
   balance: sumBalanceEvents(events),
   deposits: sumEventsByType(events, 'deposit'),
   payments: sumEventsByType(events, 'payment'),
   withdrawals: sumEventsByType(events, 'withdrawn'),
+  refunds: sumEventsByType(events, 'refund'),
   eventCount: events.length,
 });

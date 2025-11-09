@@ -26,10 +26,14 @@ export const transitionOrder = (
         tracking: e.trackingNumber,
       })
     )
-    // Paid → Cancelled
+    // Paid → Refunded (when cancelling a paid order)
     .with(
-      [{ status: 'paid' }, { type: 'Cancel' }],
-      ([, e]) => ({ status: 'cancelled' as const, reason: e.reason })
+      [{ status: 'paid' }, { type: 'Refund' }],
+      ([, e]) => ({
+        status: 'refunded' as const,
+        refundedAt: new Date().toISOString(),
+        reason: e.reason
+      })
     )
     // Shipped → Delivered
     .with(
@@ -44,10 +48,11 @@ export const transitionOrder = (
 export const getAllowedEvents = (status: OrderStatus): OrderEvent['type'][] => {
   return match(status)
     .with({ status: 'pending' }, () => ['ConfirmPayment', 'Cancel'] as OrderEvent['type'][])
-    .with({ status: 'paid' }, () => ['Ship', 'Cancel'] as OrderEvent['type'][])
+    .with({ status: 'paid' }, () => ['Ship', 'Refund'] as OrderEvent['type'][])
     .with({ status: 'shipped' }, () => ['Deliver'] as OrderEvent['type'][])
     .with({ status: 'delivered' }, () => [] as OrderEvent['type'][])
     .with({ status: 'cancelled' }, () => [] as OrderEvent['type'][])
+    .with({ status: 'refunded' }, () => [] as OrderEvent['type'][])
     .exhaustive();
 };
 
@@ -68,6 +73,7 @@ export const getStatusName = (status: OrderStatus): string => {
     .with({ status: 'shipped' }, () => 'Shipped')
     .with({ status: 'delivered' }, () => 'Delivered')
     .with({ status: 'cancelled' }, () => 'Cancelled')
+    .with({ status: 'refunded' }, () => 'Refunded')
     .exhaustive();
 };
 
@@ -83,6 +89,12 @@ export const validateEvent = (event: OrderEvent): { valid: boolean; error?: stri
     .with({ type: 'Cancel' }, (e) => {
       if (!e.reason || e.reason.trim() === '') {
         return { valid: false, error: 'Reason is required for Cancel event' };
+      }
+      return { valid: true };
+    })
+    .with({ type: 'Refund' }, (e) => {
+      if (!e.reason || e.reason.trim() === '') {
+        return { valid: false, error: 'Reason is required for Refund event' };
       }
       return { valid: true };
     })

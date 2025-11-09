@@ -1,5 +1,5 @@
 import { connect } from '@/lib/db/mongoose';
-import { Order } from '@/lib/db/models';
+import { Order, BalanceEvent } from '@/lib/db/models';
 import { transitionOrder, isValidTransition, getAllowedEvents } from '@/lib/order/stateMachine';
 import { orderTransitionSchema } from '@/lib/validation/schemas';
 import { validateRequestBody, handleValidation, successResponse, notFoundError, badRequestError, internalServerError } from '@/lib/api';
@@ -25,39 +25,69 @@ export async function POST(
       async (data) => {
         const { event } = data;
 
-        // Fetch order
-        const order = await Order.findById(id);
-        if (!order) {
-          return notFoundError('Order not found');
-        }
+        // Start a session for transaction
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        // Check if transition is valid
-        if (!isValidTransition(order.status, event)) {
-          const allowedEvents = getAllowedEvents(order.status);
-          return badRequestError(
-            `Invalid transition: Cannot apply ${event.type} to order with status ${order.status.status}`,
-            { allowedEvents, currentStatus: order.status }
-          );
-        }
-
-        // Apply state transition
-        const newStatus = transitionOrder(order.status, event);
-        if (!newStatus) {
-          return internalServerError('Failed to transition order status');
-        }
-
-        // Update order
-        order.status = newStatus;
-        await order.save();
-
-        return successResponse({
-          message: 'Order status updated successfully',
-          order: {
-            id: order._id,
-            status: order.status,
-            allowedEvents: getAllowedEvents(newStatus)
+        try {
+          // Fetch order
+          const order = await Order.findById(id).session(session);
+          if (!order) {
+            await session.abortTransaction();
+            session.endSession();
+            return notFoundError('Order not found');
           }
-        });
+
+          // Check if transition is valid
+          if (!isValidTransition(order.status, event)) {
+            await session.abortTransaction();
+            session.endSession();
+            const allowedEvents = getAllowedEvents(order.status);
+            return badRequestError(
+              `Invalid transition: Cannot apply ${event.type} to order with status ${order.status.status}`,
+              { allowedEvents, currentStatus: order.status }
+            );
+          }
+
+          // Apply state transition
+          const newStatus = transitionOrder(order.status, event);
+          if (!newStatus) {
+            await session.abortTransaction();
+            session.endSession();
+            return internalServerError('Failed to transition order status');
+          }
+
+          // Handle refund: create BalanceEvent if payment was made with balance
+          if (event.type === 'Refund' && order.payment?.method === 'balance') {
+            await BalanceEvent.create([{
+              user: order.user,
+              amount: order.total,
+              type: 'refund',
+              reference: `Order refund: ${order._id}`,
+            }], { session });
+          }
+
+          // Update order
+          order.status = newStatus;
+          await order.save({ session });
+
+          // Commit transaction
+          await session.commitTransaction();
+          session.endSession();
+
+          return successResponse({
+            message: 'Order status updated successfully',
+            order: {
+              id: order._id,
+              status: order.status,
+              allowedEvents: getAllowedEvents(newStatus)
+            }
+          });
+        } catch (err) {
+          await session.abortTransaction();
+          session.endSession();
+          throw err;
+        }
       }
     );
   } catch (error) {
