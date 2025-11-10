@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/app/api/analytics/[sellerId]/__tests__
 
 # next.js
 /.next/
