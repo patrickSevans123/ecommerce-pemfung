@@ -8,6 +8,7 @@ import PromoCode from '../lib/db/models/promoCode';
 import Order from '../lib/db/models/order';
 import BalanceEvent from '../lib/db/models/balanceEvent';
 import Cart from '../lib/db/models/cart';
+import { hashPassword } from '../lib/auth/password';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -30,32 +31,42 @@ async function seed() {
     ]);
     console.log('Existing data cleared');
 
+    // Hash password for demo users
+    console.log('Hashing passwords...');
+    const defaultPassword = await hashPassword('password123');
+    console.log('Passwords hashed');
+
     // Create Users
     console.log('Creating users...');
     const users = await User.insertMany([
       {
         email: 'seller1@example.com',
         name: 'John Seller',
+        password: defaultPassword,
         role: 'seller',
       },
       {
         email: 'seller2@example.com',
         name: 'Jane Merchant',
+        password: defaultPassword,
         role: 'seller',
       },
       {
         email: 'buyer1@example.com',
         name: 'Alice Buyer',
+        password: defaultPassword,
         role: 'buyer',
       },
       {
         email: 'buyer2@example.com',
         name: 'Bob Customer',
+        password: defaultPassword,
         role: 'buyer',
       },
       {
         email: 'buyer3@example.com',
         name: 'Charlie Shopper',
+        password: defaultPassword,
         role: 'buyer',
       },
     ]);

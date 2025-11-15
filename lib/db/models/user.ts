@@ -3,6 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 export interface UserDocument extends mongoose.Document {
   email: string;
   name?: string;
+  password: string;
   role: 'seller' | 'buyer';
   createdAt?: Date;
   updatedAt?: Date;
@@ -22,6 +23,11 @@ const UserSchema = new Schema<UserDocument, UserModel>(
     name: {
       type: String,
       trim: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false, // Don't include password in queries by default
     },
     role: {
       type: String,
