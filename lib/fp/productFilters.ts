@@ -14,7 +14,6 @@ export type ProductDoc = {
   tags?: string[];
   avgRating?: number;
   reviewsCount?: number;
-  version?: number;
   [k: string]: unknown;
 };
 
