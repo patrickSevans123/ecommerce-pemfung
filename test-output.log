@@ -1,0 +1,44 @@
+[dotenv@17.2.3] injecting env (4) from .env.local -- tip: ≡ƒöä add secrets lifecycle management: https://dotenvx.com/ops
+Γ£ô Connected to MongoDB
+
+≡ƒô¥ Step 1: Creating/finding users...
+  Γ£ô Found existing seller: susep@gmail.com
+  Γ£ô Found existing buyer: usep@gmail.com
+
+≡ƒôª Step 2: Creating product...
+  Γ£ô Created product: usluck
+
+≡ƒôï Step 3: Creating order...
+  Γ£ô Created order: 691a07d140789b9e5edf2b0b
+
+≡ƒº╣ Step 4: Clearing old notifications for this seller...
+  Γ£ô Deleted 1 old notifications
+
+≡ƒÆ│ Step 5: Simulating payment confirmation...
+  Γ£ô Order marked as paid
+  ≡ƒôñ Emitting PAYMENT_SUCCESS event to seller...
+  Γ£ô PAYMENT_SUCCESS event emitted
+
+≡ƒô¼ Step 6: Verifying seller notifications...
+  Γ£ô Found 1 notification(s) for seller
+
+  [1] Type: PAYMENT_SUCCESS
+      Order: 691a07d140789b9e5edf2b0b
+      Data: {"orderId":"691a07d140789b9e5edf2b0b","amount":10199.98,"productName":"usluck","quantity":2}
+      Created: 11/17/2025, 12:20:17 AM
+
+≡ƒîÉ Step 7: Testing API endpoint...
+  Γ£ô API returned 1 notifications
+    Latest: PAYMENT_SUCCESS for order 691a07d140789b9e5edf2b0b
+
+Γ£à Test completed!
+
+Summary:
+  Seller ID: 6919e71148c8f934330d0ecf
+  Buyer ID: 6919e71248c8f934330d0edc
+  Product ID: 691a07d140789b9e5edf2b06
+  Order ID: 691a07d140789b9e5edf2b0b
+
+Next steps:
+  1. View seller notifications: GET /api/notifications/seller-notifications?sellerId=6919e71148c8f934330d0ecf
+  2. Connect SSE listener: curl -N http://localhost:3001/api/notifications/seller/6919e71148c8f934330d0ecf

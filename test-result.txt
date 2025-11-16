@@ -1,0 +1,30 @@
+[dotenv@17.2.3] injecting env (4) from .env.local -- tip: Γ£à audit secrets and track compliance: https://dotenvx.com/ops
+Γ£ô Connected to MongoDB
+
+≡ƒô¥ Step 1: Creating/finding users...
+  Γ£ô Found existing seller: susep@gmail.com
+  Γ£ô Found existing buyer: usep@gmail.com
+
+≡ƒôª Step 2: Creating product...
+  Γ£ô Created product: usluck
+
+≡ƒôï Step 3: Creating order...
+  Γ£ô Created order: 691a1211f1c07c8f841a402f
+
+≡ƒº╣ Step 4: Clearing old notifications for this seller...
+  Γ£ô Deleted 0 old notifications
+
+≡ƒÆ│ Step 5: Simulating payment confirmation...
+  Γ£ô Order marked as paid
+  ≡ƒôñ Emitting PAYMENT_SUCCESS event to seller...
+Γ¥î Error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13502:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async testSellerNotifications (C:\Users\patri\Documents\Semester 7\Pemrograman Fungsional\Tugas Kelompok\ecommerce-pemfung\scripts\test-seller-notifications.ts:110:22) {
+  [cause]: AggregateError [ECONNREFUSED]: 
+      at internalConnectMultiple (node:net:1139:18)
+      at afterConnectMultiple (node:net:1712:7) {
+    code: 'ECONNREFUSED',
+    [errors]: [ [Error], [Error] ]
+  }
+}

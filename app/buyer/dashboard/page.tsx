@@ -1,11 +1,15 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { notificationsAPI } from '@/utils/api';
+import { Notification } from '@/types/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { NotificationList } from '@/components/notifications/notification-list';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { Loader } from '@/components/loader';
 
@@ -13,6 +17,28 @@ export default function BuyerDashboard() {
   const router = useRouter();
   const { logout } = useAuthStore();
   const { isLoading, user } = useProtectedRoute(['buyer']);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (user?.id) {
+        try {
+          setIsLoadingNotifications(true);
+          const response = await notificationsAPI.getForUser(user.id, { limit: 10 });
+          setNotifications(response.notifications);
+        } catch (error) {
+          console.error('Error fetching notifications:', error);
+        } finally {
+          setIsLoadingNotifications(false);
+        }
+      }
+    };
+
+    if (user?.id && user?.role === 'buyer') {
+      fetchNotifications();
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -113,6 +139,25 @@ export default function BuyerDashboard() {
               <Button className="w-full" variant="outline" disabled>
                 Shopping Cart
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Notifications Section */}
+        <div className="mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Recent Notifications</span>
+                <Badge variant="secondary">{notifications.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NotificationList
+                notifications={notifications}
+                isLoading={isLoadingNotifications}
+                userRole="buyer"
+              />
             </CardContent>
           </Card>
         </div>

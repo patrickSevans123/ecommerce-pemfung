@@ -1,11 +1,15 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+import { notificationsAPI } from '@/utils/api';
+import { Notification } from '@/types/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { NotificationList } from '@/components/notifications/notification-list';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { Loader } from '@/components/loader';
 
@@ -13,6 +17,92 @@ export default function SellerDashboard() {
   const router = useRouter();
   const { logout } = useAuthStore();
   const { isLoading, user } = useProtectedRoute(['seller']);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?.id) {
+        console.warn('User ID not available');
+        return;
+      }
+
+      try {
+        setIsLoadingNotifications(true);
+        setError(null);
+        console.log('Fetching notifications for seller:', user.id);
+        
+        const response = await notificationsAPI.getForSeller(user.id, { limit: 10 });
+        console.log('Notifications response:', response);
+        
+        // Handle different response formats
+        const notificationsList = response.notifications || response.data || response || [];
+        setNotifications(Array.isArray(notificationsList) ? notificationsList : []);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Error fetching notifications:', error);
+        setError(errorMessage);
+        setNotifications([]); // Clear notifications on error
+      } finally {
+        setIsLoadingNotifications(false);
+      }
+    };
+
+    if (user?.id && user?.role === 'seller') {
+      fetchNotifications();
+    }
+  }, [user?.id, user?.role]);
+
+  // Real-time SSE listener for new notifications
+  useEffect(() => {
+    if (!user?.id || user?.role !== 'seller') {
+      return;
+    }
+
+    console.log('Connecting to real-time notifications for seller:', user.id);
+    
+    const eventSource = new EventSource(
+      `/api/notifications/seller/${user.id}`
+    );
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Received real-time notification:', data);
+
+        // Skip 'connected' message
+        if (data.type === 'connected') {
+          console.log('✓ Connected to real-time notifications');
+          return;
+        }
+
+        // Add new notification to the top
+        setNotifications(prev => [
+          {
+            _id: Date.now().toString(), // Temporary ID
+            ...data,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          ...prev.slice(0, 9), // Keep only 10 most recent
+        ]);
+      } catch (error) {
+        console.error('Error parsing notification:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+      eventSource.close();
+    };
+
+    // Cleanup on unmount
+    return () => {
+      console.log('Disconnecting from real-time notifications');
+      eventSource.close();
+    };
+  }, [user?.id, user?.role]);
 
   const handleLogout = () => {
     logout();
@@ -116,6 +206,30 @@ export default function SellerDashboard() {
               <Button className="w-full" variant="outline" disabled>
                 Manage Orders
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Notifications Section */}
+        <div className="mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Recent Notifications</span>
+                <Badge variant="secondary">{notifications.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  Error loading notifications: {error}
+                </div>
+              )}
+              <NotificationList
+                notifications={notifications}
+                isLoading={isLoadingNotifications}
+                userRole="seller"
+              />
             </CardContent>
           </Card>
         </div>
