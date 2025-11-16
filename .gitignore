@@ -43,3 +43,31 @@ next-env.d.ts
 
 # vscode
 .vscode/*
+
+# test files and logs
+*.log
+test-output.txt
+test-result.txt
+test-output.log
+server.log
+
+# markdown documentation
+IMPLEMENTATION_COMPLETE.md
+NOTIFICATION_DEDUPLICATION.md
+
+# scripts
+scripts/
+
+# testing utilities
+lib/db/test-utils.ts
+jest.config.js
+app/api/test/
+
+# IDE workspace
+*.code-workspace
+
+# Postman collection
+postman_collection.json
+
+# dist
+dist/
