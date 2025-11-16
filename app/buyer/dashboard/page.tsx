@@ -1,32 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useProtectedRoute } from '@/hooks/useProtectedRoute';
+import { Loader } from '@/components/loader';
 
 export default function BuyerDashboard() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    } else if (user?.role !== 'buyer') {
-      router.push('/seller/dashboard');
-    }
-  }, [isAuthenticated, user, router]);
+  const { logout } = useAuthStore();
+  const { isLoading, user } = useProtectedRoute(['buyer']);
 
   const handleLogout = () => {
     logout();
     router.push('/');
   };
 
-  if (!isAuthenticated || user?.role !== 'buyer') {
-    return null;
+  if (isLoading) {
+    return <Loader />;
   }
 
   return (
