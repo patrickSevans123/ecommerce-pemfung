@@ -46,6 +46,10 @@ export async function POST(request: NextRequest) {
         reviewsCount: stats.count,
       });
 
+      // Emit ReviewAdded notification removed - no longer supported
+      // Review added events are no longer emitted as notifications
+      // You can implement this separately if needed
+
       return createdResponse({ review: reviewDoc.toObject(), stats });
     }
   );

@@ -12,7 +12,7 @@
 
 # testing
 /coverage
-/app/api/analytics/[sellerId]/__tests__
+/app/api/analytics/[sellerId]/__tests__/
 
 # next.js
 /.next/
@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# vscode
+.vscode/*

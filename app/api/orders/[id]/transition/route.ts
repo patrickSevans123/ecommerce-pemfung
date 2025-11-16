@@ -3,6 +3,7 @@ import { Order, BalanceEvent } from '@/lib/db/models';
 import { transitionOrder, isValidTransition, getAllowedEvents } from '@/lib/order/stateMachine';
 import { orderTransitionSchema } from '@/lib/validation/schemas';
 import { validateRequestBody, handleValidation, successResponse, notFoundError, badRequestError, internalServerError } from '@/lib/api';
+import { emitEvent } from '@/lib/notifications';
 import mongoose from 'mongoose';
 
 export async function POST(
@@ -74,6 +75,17 @@ export async function POST(
           // Commit transaction
           await session.commitTransaction();
           session.endSession();
+
+          // Emit OrderShipped notification if applicable (fire-and-forget)
+          if (event.type === 'Ship') {
+            emitEvent({
+              type: 'ORDER_SHIPPED',
+              userId: order.user?.toString() || '',
+              orderId: id,
+              trackingNumber: event.trackingNumber,
+              sellerId: order.items[0]?.seller?.toString() || '',
+            }).catch(error => console.error('Failed to emit OrderShipped event:', error));
+          }
 
           return successResponse({
             message: 'Order status updated successfully',
