@@ -25,7 +25,6 @@ export default function Home() {
           productsAPI.getAll({ limit: 6 }),
           promoCodesAPI.getAll({ active: true }),
         ]);
-        console.log('Fetched promo codes:', promoResponse);
         setProducts(productsResponse);
         setPromoCodes(promoResponse);
       } catch (error) {
