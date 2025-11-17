@@ -198,8 +198,11 @@ export default function SellerDashboard() {
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full" variant="outline" disabled>
-                Add Product
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/seller/products/add">Add Product</Link>
+              </Button>
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/seller/products">View Products</Link>
               </Button>
               <Button className="w-full" variant="outline" disabled>
                 View Analytics
@@ -235,17 +238,22 @@ export default function SellerDashboard() {
           </Card>
         </div>
 
-        {/* Coming Soon Section */}
+        {/* Features Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Coming Soon</CardTitle>
+            <CardTitle>Available Features</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600">
-              More features will be added soon, including:
+            <p className="text-gray-600 mb-4">
+              You now have access to:
             </p>
-            <ul className="list-disc list-inside mt-4 space-y-2 text-gray-600">
-              <li>Product management (create, edit, delete)</li>
+            <ul className="list-disc list-inside space-y-2 text-gray-600 mb-6">
+              <li>✅ Product management (create, edit, delete)</li>
+            </ul>
+            <p className="text-gray-600 mb-2">
+              Coming soon:
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-gray-600">
               <li>Order management for your products</li>
               <li>Advanced sales analytics dashboard</li>
               <li>Revenue tracking and reporting</li>

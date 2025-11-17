@@ -17,4 +17,55 @@ export const productsAPI = {
   getById: (id: string): Promise<Product> => {
     return fetchAPI<Product>(`/products/${id}`);
   },
+
+  getBySeller: (token: string, sellerId: string): Promise<Product[]> => {
+    return fetchAPI<Product[]>(`/products?seller=${sellerId}`, { token });
+  },
+
+  create: (
+    token: string,
+    data: {
+      title: string;
+      description: string;
+      price: number;
+      category: string;
+      images: string[];
+      stock: number;
+      seller: string;
+      tags: string[];
+    }
+  ): Promise<Product> => {
+    return fetchAPI<Product>('/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      token,
+    });
+  },
+
+  update: (
+    token: string,
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      price?: number;
+      category?: string;
+      images?: string[];
+      stock?: number;
+      tags?: string[];
+    }
+  ): Promise<Product> => {
+    return fetchAPI<Product>(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      token,
+    });
+  },
+
+  delete: (token: string, id: string): Promise<{ message: string }> => {
+    return fetchAPI<{ message: string }>(`/products/${id}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
 };

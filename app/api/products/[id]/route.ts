@@ -15,6 +15,16 @@ const stockUpdateSchema = z.object({
   version: z.number().int(),
 });
 
+const updateProductSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  price: z.number().nonnegative().optional(),
+  category: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  stock: z.number().int().min(0).optional(),
+  tags: z.array(z.string()).optional(),
+});
+
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   await connect();
@@ -50,4 +60,39 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return successResponse(updated);
     }
   );
+}
+
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+
+  return handleValidation(
+    await validateRequestBody(request, updateProductSchema),
+    async (data) => {
+      await connect();
+
+      const updated = await Product.findByIdAndUpdate(id, data, {
+        new: true,
+        runValidators: true,
+      }).lean();
+
+      if (!updated) {
+        return notFoundError('Product', id);
+      }
+
+      return successResponse(updated);
+    }
+  );
+}
+
+export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  await connect();
+
+  const deleted = await Product.findByIdAndDelete(id);
+
+  if (!deleted) {
+    return notFoundError('Product', id);
+  }
+
+  return successResponse({ message: 'Product deleted successfully' });
 }

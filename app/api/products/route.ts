@@ -19,9 +19,15 @@ const createProductSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   await connect();
-  const products = await Product.find().limit(200).lean();
+
+  const { searchParams } = new URL(request.url);
+  const sellerId = searchParams.get('seller');
+
+  const query = sellerId ? { seller: sellerId } : {};
+  const products = await Product.find(query).limit(200).lean();
+
   return successResponse(products);
 }
 
