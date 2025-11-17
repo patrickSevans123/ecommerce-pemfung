@@ -62,7 +62,11 @@ export default function BuyerDashboard() {
               <span className="text-sm text-gray-600">
                 {user.name || user.email}
               </span>
-              <Button variant="outline" onClick={handleLogout}>
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              >
                 Logout
               </Button>
             </nav>
