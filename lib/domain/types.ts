@@ -35,6 +35,62 @@ export type OrderEvent =
   | { type: 'Cancel'; reason: string }
   | { type: 'Refund'; reason: string }
 
+// Event data interfaces for explicit typing
+// Note: Canonical definitions are in lib/db/models/notification.ts
+// These are re-exported here for domain layer consistency
+
+export interface OrderPlacedData {
+  productName: string;
+  quantity: number;
+  totalAmount: number;
+}
+
+export interface PaymentSuccessData {
+  orderId: string;
+  amount: number;
+  productName?: string;
+  quantity?: number;
+}
+
+export interface OrderShippedData {
+  orderId: string;
+  trackingNumber: string;
+}
+
+export interface ReviewAddedData {
+  // Additional data if needed, rating and productName are in main event
+}
+
+export interface CartUpdatedData {
+  productName: string;
+  action: 'added' | 'removed' | 'updated';
+}
+
+export interface PaymentFailedData {
+  orderId: string;
+  amount: number;
+  reason?: string;
+}
+
+export interface OrderDeliveredData {
+  orderId: string;
+  deliveredAt?: string;
+}
+
+export interface BalanceUpdatedData {
+  reason?: string;
+  amount?: number;
+}
+
+// SystemEvent discriminated union for notifications
+export type SystemEvent =
+  | { type: 'ORDER_PLACED'; userId: UserId; orderId: OrderId; total: number; sellerId: UserId; data?: OrderPlacedData }
+  | { type: 'PAYMENT_SUCCESS'; userId: UserId; orderId: OrderId; amount: number; sellerId: UserId; data?: PaymentSuccessData }
+  | { type: 'PAYMENT_FAILED'; userId: UserId; orderId: OrderId; amount: number; sellerId: UserId; data?: PaymentFailedData }
+  | { type: 'ORDER_SHIPPED'; userId: UserId; orderId: OrderId; trackingNumber?: string; sellerId: UserId; data?: OrderShippedData }
+  | { type: 'ORDER_DELIVERED'; userId: UserId; orderId: OrderId; sellerId: UserId; data?: OrderDeliveredData }
+  | { type: 'BALANCE_UPDATED'; userId: UserId; changeType: 'credit' | 'debit'; amount: number; data?: BalanceUpdatedData };
+
 export type PaymentMethod =
   | { method: 'balance'; userId: UserId }
   | { method: 'cash_on_delivery' };

@@ -76,10 +76,10 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <Button variant="outline" asChild>
+                  <Button variant="outline" asChild className="bg-white text-black">
                     <Link href="/login">Login</Link>
                   </Button>
-                  <Button asChild>
+                  <Button asChild className="bg-black text-white">
                     <Link href="/register">Register</Link>
                   </Button>
                 </>
