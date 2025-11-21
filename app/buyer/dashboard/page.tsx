@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { notificationsAPI } from '@/utils/api';
+import { notificationsAPI, cartAPI } from '@/utils/api';
 import { Notification } from '@/types/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ export default function BuyerDashboard() {
   const { isLoading, user } = useProtectedRoute(['buyer']);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
+  const [cartItemsCount, setCartItemsCount] = useState(0);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -35,8 +36,21 @@ export default function BuyerDashboard() {
       }
     };
 
+    const fetchCartCount = async () => {
+      if (user?.id) {
+        try {
+          const response = await cartAPI.getCart(user.id);
+          const totalItems = response.cart.items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
+          setCartItemsCount(totalItems);
+        } catch (error) {
+          console.error('Error fetching cart:', error);
+        }
+      }
+    };
+
     if (user?.id && user?.role === 'buyer') {
       fetchNotifications();
+      fetchCartCount();
     }
   }, [user]);
 
@@ -124,7 +138,7 @@ export default function BuyerDashboard() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Cart Items</span>
-                <span className="text-2xl font-bold">0</span>
+                <span className="text-2xl font-bold">{cartItemsCount}</span>
               </div>
             </CardContent>
           </Card>
@@ -136,6 +150,9 @@ export default function BuyerDashboard() {
             <CardContent className="space-y-2">
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/products">Browse Products</Link>
+              </Button>
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/cart">View Cart</Link>
               </Button>
               <Button className="w-full" variant="outline" disabled>
                 View Orders
