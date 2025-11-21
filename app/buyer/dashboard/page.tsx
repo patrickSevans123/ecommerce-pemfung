@@ -62,8 +62,8 @@ export default function BuyerDashboard() {
               <span className="text-sm text-gray-600">
                 {user.name || user.email}
               </span>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleLogout}
                 className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
               >
@@ -135,7 +135,7 @@ export default function BuyerDashboard() {
             </CardHeader>
             <CardContent className="space-y-2">
               <Button className="w-full" variant="outline" asChild>
-                <Link href="/">Browse Products</Link>
+                <Link href="/products">Browse Products</Link>
               </Button>
               <Button className="w-full" variant="outline" disabled>
                 View Orders
