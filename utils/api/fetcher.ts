@@ -33,7 +33,9 @@ export async function fetchAPI<T>(
 
   if (!response.ok) {
     const error: ApiError = data;
-    throw new Error(error.error || 'An error occurred');
+    const apiError = new Error(error.error || 'An error occurred') as Error & { response?: { data: ApiError } };
+    apiError.response = { data: error };
+    throw apiError;
   }
 
   return data;
