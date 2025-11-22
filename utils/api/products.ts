@@ -14,6 +14,32 @@ export const productsAPI = {
     return fetchAPI<Product[]>(`/products/search${query ? `?${query}` : ''}`);
   },
 
+  search: (params?: {
+    q?: string;
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minRating?: number;
+    inStock?: boolean;
+    sort?: 'price-asc' | 'price-desc' | 'rating-desc' | 'newest';
+    limit?: number;
+    skip?: number;
+  }): Promise<Product[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.q) queryParams.append('q', params.q);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.minPrice !== undefined) queryParams.append('minPrice', params.minPrice.toString());
+    if (params?.maxPrice !== undefined) queryParams.append('maxPrice', params.maxPrice.toString());
+    if (params?.minRating !== undefined) queryParams.append('minRating', params.minRating.toString());
+    if (params?.inStock !== undefined) queryParams.append('inStock', params.inStock.toString());
+    if (params?.sort) queryParams.append('sort', params.sort);
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.skip) queryParams.append('skip', params.skip.toString());
+
+    const query = queryParams.toString();
+    return fetchAPI<Product[]>(`/products/search${query ? `?${query}` : ''}`);
+  },
+
   getById: (id: string): Promise<Product> => {
     return fetchAPI<Product>(`/products/${id}`);
   },
