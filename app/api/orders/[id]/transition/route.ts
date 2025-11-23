@@ -25,12 +25,6 @@ export async function POST(
       await validateRequestBody(request, orderTransitionSchema),
       async (data) => {
         const { event } = data;
-        // Debug: log incoming transition request
-        try {
-          console.debug('[orders/transition] incoming', { orderId: id, event });
-        } catch (e) {
-          // noop
-        }
 
         // Start a session for transaction
         const session = await mongoose.startSession();
@@ -39,16 +33,7 @@ export async function POST(
         try {
           // Fetch order
           const order = await Order.findById(id).session(session);
-          try {
-            console.debug('[orders/transition] fetched order', {
-              id: order?._id?.toString(),
-              status: order?.status,
-              payment: order?.payment,
-              itemsCount: order?.items?.length ?? 0,
-            });
-          } catch (e) {
-            // noop
-          }
+          // (debug logs removed)
           if (!order) {
             await session.abortTransaction();
             session.endSession();
@@ -59,12 +44,6 @@ export async function POST(
           if (!(event.type === 'Ship' && order.status?.status === 'pending' && order.payment?.method === 'cash_on_delivery')) {
             if (!isValidTransition(order.status, event)) {
               const allowedEvents = getAllowedEvents(order.status);
-              console.warn('[orders/transition] invalid transition', {
-                orderId: id,
-                currentStatus: order.status,
-                attemptedEvent: event,
-                allowedEvents,
-              });
               await session.abortTransaction();
               session.endSession();
               return badRequestError(

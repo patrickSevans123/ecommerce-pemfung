@@ -21,12 +21,6 @@ export async function POST(request: Request) {
     return await handleValidation(
       await validateRequestBody(request, checkoutSchema),
       async (data) => {
-        // Debug: log parsed request body for troubleshooting 400 errors
-        try {
-          console.debug('checkout POST payload:', data);
-        } catch (e) {
-          console.debug('checkout POST payload: <unserializable>');
-        }
 
         const { userId, paymentMethod, shippingAddress } = data;
 
@@ -71,9 +65,7 @@ export async function POST(request: Request) {
         const checkoutValue = result.value;
         if (payment.method === 'balance') {
           const payResult = await paymentPipeline(checkoutValue.orderId, data.promoCode);
-          if (payResult.isOk()) {
-            // Debug: log success to help trace flow
-            console.debug('paymentPipeline succeeded for order', checkoutValue.orderId);
+            if (payResult.isOk()) {
             return successResponse(payResult.value);
           } else {
             const error = payResult.error;
