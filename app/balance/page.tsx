@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 type Event = {
   _id?: string;
   amount: number;
-  type: 'deposit' | 'withdrawn' | 'payment' | 'refund';
+  type: 'deposit' | 'withdrawn' | 'payment' | 'refund' | 'income';
   reference?: string;
   createdAt?: string;
 };
@@ -177,7 +177,7 @@ export default function BalancePage() {
                       </thead>
                       <tbody className="bg-white">
                         {events.map((e) => {
-                          const isPositive = e.type === 'deposit' || e.type === 'refund';
+                          const isPositive = e.type === 'deposit' || e.type === 'refund' || e.type === 'income';
                           return (
                             <tr key={e._id} className={isPositive ? 'text-green-700' : 'text-red-600'}>
                               <td className="p-3">{e.type.charAt(0).toUpperCase() + e.type.slice(1)}</td>

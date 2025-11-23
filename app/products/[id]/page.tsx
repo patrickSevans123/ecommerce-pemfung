@@ -25,6 +25,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [productId, setProductId] = useState<string | null>(null);
 
@@ -80,10 +81,50 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleBuyNow = () => {
-    // TODO: Implement buy now functionality
-    toast.info('Coming soon', {
-      description: 'Buy now feature will be implemented later',
-    });
+    (async () => {
+      if (!isAuthenticated || !user?.id) {
+        router.push('/login');
+        return;
+      }
+
+      if (!productId) return;
+
+      try {
+        setIsBuyingNow(true);
+
+        // Fetch current cart and remove other items so checkout contains only this product
+        try {
+          const current = await cartAPI.getCart(user.id);
+          const items = current.cart?.items || [];
+          await Promise.all(items.map(async (it: any) => {
+            const pid = it.product || it.productId || '';
+            if (pid && pid !== productId) {
+              try {
+                await cartAPI.removeItem(user.id, pid);
+              } catch (e) {
+                // Non-fatal: log and continue
+                console.error('Failed to remove cart item during Buy Now:', pid, e);
+              }
+            }
+          }));
+        } catch (e) {
+          // If fetching cart fails, continue — we'll still add the item
+          console.error('Failed to fetch/clean cart before Buy Now:', e);
+        }
+
+        // Add the selected product to cart (or update quantity if already present)
+        await cartAPI.addToCart(user.id, productId, quantity);
+
+        // Navigate to checkout
+        router.push('/checkout');
+      } catch (error: unknown) {
+        console.error('Buy Now failed:', error);
+        const msg = (error as any)?.message || 'Failed to start checkout';
+        toast.error(msg);
+      } finally {
+        setIsBuyingNow(false);
+      }
+    })();
   };
 
   const handleLogout = () => {

@@ -1,11 +1,12 @@
 import { connect } from '@/lib/db/mongoose';
-import { checkoutPipeline } from '@/lib/payment/service';
+import { checkoutPipeline, paymentPipeline } from '@/lib/payment/service';
 import { PaymentMethod } from '@/lib/domain/types';
 import { checkoutSchema } from '@/lib/validation/schemas';
 import {
   validateRequestBody,
   handleValidation,
   createdResponse,
+  successResponse,
   badRequestError,
   notFoundError,
   internalServerError,
@@ -20,6 +21,13 @@ export async function POST(request: Request) {
     return await handleValidation(
       await validateRequestBody(request, checkoutSchema),
       async (data) => {
+        // Debug: log parsed request body for troubleshooting 400 errors
+        try {
+          console.debug('checkout POST payload:', data);
+        } catch (e) {
+          console.debug('checkout POST payload: <unserializable>');
+        }
+
         const { userId, paymentMethod, shippingAddress } = data;
 
         // Build payment method object
@@ -34,11 +42,15 @@ export async function POST(request: Request) {
           shippingAddress
         );
 
-        // Handle result
-        if (result.isOk()) {
-          return createdResponse(result.value);
-        } else {
+        // Handle checkout result
+        if (!result.isOk()) {
           const error = result.error;
+          // Debug: log payment service error for visibility
+          try {
+            console.error('checkoutPipeline failed:', error);
+          } catch (e) {
+            console.error('checkoutPipeline failed (unserializable error)');
+          }
           const statusCode =
             error.code === 'CART_NOT_FOUND' || error.code === 'PRODUCT_NOT_FOUND' ? HttpStatus.NOT_FOUND :
               error.code === 'CART_EMPTY' || error.code === 'INSUFFICIENT_STOCK' ||
@@ -46,7 +58,7 @@ export async function POST(request: Request) {
                 error.code === 'PROMO_CODE_EXPIRED' || error.code === 'PROMO_CODE_LIMIT_REACHED' ? HttpStatus.BAD_REQUEST :
                 HttpStatus.INTERNAL_SERVER_ERROR;
 
-          if (statusCode === HttpStatus.NOT_FOUND) {
+            if (statusCode === HttpStatus.NOT_FOUND) {
             return notFoundError(error.message);
           } else if (statusCode === HttpStatus.BAD_REQUEST) {
             return badRequestError(error.message, error.details);
@@ -54,6 +66,40 @@ export async function POST(request: Request) {
             return internalServerError(error.message);
           }
         }
+
+        // If checkout succeeded and payment method is balance, process payment immediately
+        const checkoutValue = result.value;
+        if (payment.method === 'balance') {
+          const payResult = await paymentPipeline(checkoutValue.orderId, data.promoCode);
+          if (payResult.isOk()) {
+            // Debug: log success to help trace flow
+            console.debug('paymentPipeline succeeded for order', checkoutValue.orderId);
+            return successResponse(payResult.value);
+          } else {
+            const error = payResult.error;
+            // Debug: log payment processing error
+            try {
+              console.error('paymentPipeline failed:', error);
+            } catch (e) {
+              console.error('paymentPipeline failed (unserializable error)');
+            }
+            const statusCode =
+              error.code === 'ORDER_NOT_FOUND' ? HttpStatus.NOT_FOUND :
+                error.code === 'INVALID_ORDER_STATUS' || error.code === 'INSUFFICIENT_BALANCE' ? HttpStatus.BAD_REQUEST :
+                  HttpStatus.INTERNAL_SERVER_ERROR;
+
+            if (statusCode === HttpStatus.NOT_FOUND) {
+              return notFoundError(error.message);
+            } else if (statusCode === HttpStatus.BAD_REQUEST) {
+              return badRequestError(error.message, error.details);
+            } else {
+              return internalServerError(error.message);
+            }
+          }
+        }
+
+        // Otherwise return created order (payment pending or COD)
+        return createdResponse(checkoutValue);
       }
     );
   } catch (error) {
