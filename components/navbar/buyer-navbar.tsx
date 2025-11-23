@@ -27,6 +27,9 @@ export default function BuyerNavbar() {
                 <Link href="/products" className="text-sm text-gray-600 hover:text-gray-900">
                   Products
                 </Link>
+                <Link href="/buyer/orders" className="text-sm text-gray-600 hover:text-gray-900">
+                  Orders
+                </Link>
                 <Link href="/cart" className="text-sm text-gray-600 hover:text-gray-900">
                   Cart
                 </Link>

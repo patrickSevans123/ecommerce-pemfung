@@ -634,17 +634,23 @@ const executePaymentInTransaction = (
         markOrderAsPaid(context.order);
 
         // --- Add seller credit events ---
-        // For each item in the order, credit the corresponding seller with the item total
-        // Accumulate amounts per seller to create one BalanceEvent per seller
-        const sellerAmounts: Record<string, number> = {};
+        // Group items by seller so each seller receives a single BalanceEvent with their total
+        const sellerAmounts = new Map<string, number>();
         for (const item of context.order.items) {
-          const sellerId = item.seller?.toString();
+          // Normalize seller id to string safely (handles ObjectId or plain string)
+          const rawSeller = (item.seller as any);
+          const sellerId = rawSeller && typeof rawSeller.toString === 'function'
+            ? rawSeller.toString()
+            : String(rawSeller || '');
+
           if (!sellerId) continue;
+
           const itemTotal = (item.price || 0) * (item.quantity || 1);
-          sellerAmounts[sellerId] = (sellerAmounts[sellerId] || 0) + itemTotal;
+          const prev = sellerAmounts.get(sellerId) || 0;
+          sellerAmounts.set(sellerId, prev + itemTotal);
         }
 
-        const sellerEvents = Object.entries(sellerAmounts).map(([sellerId, amount]) => ({
+        const sellerEvents = Array.from(sellerAmounts.entries()).map(([sellerId, amount]) => ({
           user: new mongoose.Types.ObjectId(sellerId),
           amount,
           // Record seller proceeds as 'income'
@@ -654,7 +660,8 @@ const executePaymentInTransaction = (
 
         if (sellerEvents.length > 0) {
           // Persist seller balance events inside the same transaction
-          await BalanceEvent.create(sellerEvents, { session });
+          // When creating multiple documents with a session, Mongoose requires `ordered: true`.
+          await BalanceEvent.create(sellerEvents, { session, ordered: true });
         }
         // --- end seller credit events ---
 
