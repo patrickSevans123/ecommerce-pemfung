@@ -128,6 +128,9 @@ export default function ProductsPage() {
                       <Link href="/cart" className="text-sm text-gray-600 hover:text-gray-900">
                         Cart
                       </Link>
+                      <Link href="/balance" className="text-sm text-gray-600 hover:text-gray-900">
+                        Balance
+                      </Link>
                     </>
                   )}
                   {user?.role === 'seller' && (
