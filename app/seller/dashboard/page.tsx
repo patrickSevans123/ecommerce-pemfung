@@ -105,11 +105,6 @@ export default function SellerDashboard() {
     };
   }, [user?.id, user?.role]);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   if (isLoading) {
     return <Loader />;
   }

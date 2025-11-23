@@ -134,11 +134,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   if (authLoading || isLoading) {
     return <Loader />;
   }

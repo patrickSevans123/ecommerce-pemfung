@@ -96,11 +96,6 @@ export default function AddProductPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   if (authLoading) {
     return <Loader />;
   }

@@ -190,11 +190,6 @@ export default function CartPage() {
     router.push('/checkout');
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   const handleToggleSelection = (productId: string) => {
     setSelectedItems(prev => {
       const newSet = new Set(prev);

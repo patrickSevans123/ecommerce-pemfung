@@ -104,11 +104,6 @@ export default function ProductsClient() {
     router.push('/products');
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />

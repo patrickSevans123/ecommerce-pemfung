@@ -127,11 +127,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     })();
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

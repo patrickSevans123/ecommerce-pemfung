@@ -55,11 +55,6 @@ export default function BuyerDashboard() {
     }
   }, [user]);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   if (isLoading) {
     return <Loader />;
   }

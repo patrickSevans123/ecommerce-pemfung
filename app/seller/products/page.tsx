@@ -79,11 +79,6 @@ export default function SellerProductsPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
-
   if (authLoading) {
     return <Loader />;
   }
