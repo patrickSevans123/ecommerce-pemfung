@@ -17,6 +17,15 @@ export const transitionOrder = (
       [{ status: 'pending' }, { type: 'Cancel' }],
       ([, e]) => ({ status: 'cancelled' as const, reason: e.reason })
     )
+    // Pending → Shipped (allow sellers to ship COD orders directly from pending)
+    .with(
+      [{ status: 'pending' }, { type: 'Ship' }],
+      ([, e]) => ({
+        status: 'shipped' as const,
+        shippedAt: new Date().toISOString(),
+        tracking: e.trackingNumber,
+      })
+    )
     // Paid → Shipped
     .with(
       [{ status: 'paid' }, { type: 'Ship' }],

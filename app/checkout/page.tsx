@@ -148,23 +148,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleValidateCart = async () => {
-    if (!user?.id) return;
-    try {
-      const items = cartItems.map(i => ({ productId: i.productId, quantity: i.quantity }));
-      const validation = await cartAPI.validateCart(user.id, items);
-      if (validation && !validation.valid && validation.errors) {
-        setValidationErrors(aggregateValidationErrors(validation.errors));
-        toast.error('Cart has validation errors');
-      } else {
-        setValidationErrors({});
-        toast.success('Cart is valid');
-      }
-    } catch (error) {
-      console.error('Validate cart failed:', error);
-      toast.error('Validation failed');
-    }
-  };
+  
 
   const handleProceed = async () => {
     if (!user?.id) {
@@ -212,8 +196,8 @@ export default function CheckoutPage() {
       const res = await checkoutAPI.createCheckout(payload);
       if (res && res.orderId) {
         toast.success('Order created');
-        // Stay on buyer dashboard or home; payment is verified/initiated
-        router.push('/buyer/dashboard');
+  // After checkout succeed, navigate buyer to their orders page
+  router.push('/buyer/orders');
       } else {
         toast.error('Failed to create order');
       }
@@ -373,7 +357,6 @@ export default function CheckoutPage() {
                 </CardContent>
                 <CardFooter>
                   <div className="flex flex-col gap-2">
-                    <Button variant="outline" onClick={handleValidateCart}>Validate Cart</Button>
                     <Button onClick={handleProceed} disabled={isProcessing}>{isProcessing ? 'Processing...' : 'Proceed to payment'}</Button>
                   </div>
                 </CardFooter>
