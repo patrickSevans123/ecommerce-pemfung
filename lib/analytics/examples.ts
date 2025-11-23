@@ -25,9 +25,7 @@ export async function getFullAnalytics(sellerId: string) {
   return result.match(
     (analytics) => {
       // Success case - analytics data is available
-      console.log('Total Sales:', analytics.totalSales);
-      console.log('Order Count:', analytics.orderCount);
-      console.log('Top Products:', analytics.productMetrics.topProducts);
+  // analytics example output removed
       return { success: true, data: analytics };
     },
     (error) => {

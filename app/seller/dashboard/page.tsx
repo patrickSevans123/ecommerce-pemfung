@@ -25,17 +25,17 @@ export default function SellerDashboard() {
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user?.id) {
-        console.warn('User ID not available');
+        // User ID not available
         return;
       }
 
       try {
         setIsLoadingNotifications(true);
         setError(null);
-        console.log('Fetching notifications for seller:', user.id);
+  // Fetching notifications for seller
         
         const response = await notificationsAPI.getForSeller(user.id, { limit: 10 });
-        console.log('Notifications response:', response);
+  // Notifications response received
         
         // Handle different response formats
         const notificationsList = response.notifications || response.data || response || [];
@@ -61,7 +61,7 @@ export default function SellerDashboard() {
       return;
     }
 
-    console.log('Connecting to real-time notifications for seller:', user.id);
+  // Connecting to real-time notifications for seller
     
     const eventSource = new EventSource(
       `/api/notifications/seller/${user.id}`
@@ -70,11 +70,11 @@ export default function SellerDashboard() {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('Received real-time notification:', data);
+  // Received real-time notification
 
         // Skip 'connected' message
         if (data.type === 'connected') {
-          console.log('✓ Connected to real-time notifications');
+          // Connected to real-time notifications
           return;
         }
 
@@ -100,7 +100,7 @@ export default function SellerDashboard() {
 
     // Cleanup on unmount
     return () => {
-      console.log('Disconnecting from real-time notifications');
+  // Disconnecting from real-time notifications
       eventSource.close();
     };
   }, [user?.id, user?.role]);

@@ -10,21 +10,21 @@ export async function GET(
     await connect();
 
     const { sellerId } = await params;
-    console.log(`[SSE] New seller connection: ${sellerId}`);
+  // SSE: new seller connection
 
     // Set up Server-Sent Events
     const responseStream = new ReadableStream({
       start(controller) {
-        console.log(`[SSE] Starting stream for seller: ${sellerId}`);
+  // SSE: starting stream
         
         // Send initial connection message
         controller.enqueue(`data: ${JSON.stringify({ type: 'connected', message: 'Real-time notifications started' })}\n\n`);
 
         // Subscribe to seller notifications stream
-        console.log(`[SSE] Setting up subscription for seller: ${sellerId}`);
+  // SSE: setting up subscription
         const subscription = sellerNotifications$(sellerId).subscribe({
           next: (event) => {
-            console.log(`[SSE] ✅ Event received for seller ${sellerId}:`, event.type);
+            // SSE: event received for seller
             
             // Transform event to notification format for frontend
             const notification: Record<string, unknown> = {
@@ -58,14 +58,14 @@ export async function GET(
             controller.close();
           },
           complete: () => {
-            console.log(`[SSE] Stream completed for seller: ${sellerId}`);
+            // SSE: stream completed
             controller.close();
           }
         });
 
         // Handle client disconnect
         request.signal.addEventListener('abort', () => {
-          console.log(`[SSE] Client disconnected for seller: ${sellerId}`);
+          // SSE: client disconnected
           subscription.unsubscribe();
           controller.close();
         });
