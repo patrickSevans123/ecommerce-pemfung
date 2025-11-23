@@ -33,24 +33,21 @@ export async function POST(
         try {
           // Fetch order
           const order = await Order.findById(id).session(session);
-          // (debug logs removed)
           if (!order) {
             await session.abortTransaction();
             session.endSession();
             return notFoundError('Order not found');
           }
 
-          // Check if transition is valid. Special-case: allow Ship from 'pending' when payment is Cash On Delivery
-          if (!(event.type === 'Ship' && order.status?.status === 'pending' && order.payment?.method === 'cash_on_delivery')) {
-            if (!isValidTransition(order.status, event)) {
-              const allowedEvents = getAllowedEvents(order.status);
-              await session.abortTransaction();
-              session.endSession();
-              return badRequestError(
-                `Invalid transition: Cannot apply ${event.type} to order with status ${order.status.status}`,
-                { allowedEvents, currentStatus: order.status }
-              );
-            }
+          // Check if transition is valid
+          if (!isValidTransition(order.status, event)) {
+            await session.abortTransaction();
+            session.endSession();
+            const allowedEvents = getAllowedEvents(order.status);
+            return badRequestError(
+              `Invalid transition: Cannot apply ${event.type} to order with status ${order.status.status}`,
+              { allowedEvents, currentStatus: order.status }
+            );
           }
 
           // Apply state transition
@@ -71,28 +68,28 @@ export async function POST(
             }], { session });
           }
 
-          // Handle seller income for Cash On Delivery when order is marked delivered
-          // When buyer confirms delivery (event.type === 'Deliver') and payment method is COD
-          // create BalanceEvent(s) of type 'income' for each seller involved in the order
-          if (event.type === 'Deliver' && order.payment?.method === 'cash_on_delivery') {
-            const sellerAmounts: Record<string, number> = {};
-            for (const item of order.items) {
-              const sellerId = item.seller?.toString();
-              if (!sellerId) continue;
-              const itemTotal = (item.price || 0) * (item.quantity || 1);
-              sellerAmounts[sellerId] = (sellerAmounts[sellerId] || 0) + itemTotal;
-            }
+          // Handle delivery: create income BalanceEvents for each seller
+          if (event.type === 'Deliver') {
+            // Group items by seller and calculate income per seller
+            const sellerIncomes = new Map<string, number>();
 
-            const sellerEvents = Object.entries(sellerAmounts).map(([sellerId, amount]) => ({
+            order.items.forEach(item => {
+              const sellerId = item.seller.toString();
+              const itemTotal = item.price * item.quantity;
+              const currentIncome = sellerIncomes.get(sellerId) || 0;
+              sellerIncomes.set(sellerId, currentIncome + itemTotal);
+            });
+
+            // Create income balance events for each seller
+            const incomeEvents = Array.from(sellerIncomes.entries()).map(([sellerId, amount]) => ({
               user: new mongoose.Types.ObjectId(sellerId),
               amount,
               type: 'income' as const,
-              reference: `Order COD income: ${order._id}`,
+              reference: `Income from order: ${order._id}`,
             }));
 
-            if (sellerEvents.length > 0) {
-              // When creating multiple BalanceEvent documents in a session, include ordered:true
-              await BalanceEvent.create(sellerEvents, { session, ordered: true });
+            if (incomeEvents.length > 0) {
+              await BalanceEvent.create(incomeEvents, { session, ordered: true });
             }
           }
 
@@ -115,6 +112,20 @@ export async function POST(
             }).catch(error => console.error('Failed to emit OrderShipped event:', error));
           }
 
+          // Emit OrderDelivered notification if applicable (fire-and-forget)
+          if (event.type === 'Deliver') {
+            emitEvent({
+              type: 'ORDER_DELIVERED',
+              userId: order.user?.toString() || '',
+              orderId: id,
+              sellerId: order.items[0]?.seller?.toString() || '',
+              data: {
+                orderId: id,
+                deliveredAt: newStatus.status === 'delivered' ? newStatus.deliveredAt : undefined,
+              },
+            }).catch(error => console.error('Failed to emit OrderDelivered event:', error));
+          }
+
           return successResponse({
             message: 'Order status updated successfully',
             order: {
@@ -124,19 +135,6 @@ export async function POST(
             }
           });
         } catch (err) {
-          // Log full context to help debugging 500s
-          try {
-            console.error('[orders/transition] transaction failed', {
-              orderId: id,
-              event,
-              // order may be undefined here if fetch failed earlier
-              orderStatus: (err && (err as any).orderStatus) || undefined,
-              error: err instanceof Error ? err.message : String(err),
-              stack: err instanceof Error ? err.stack : undefined,
-            });
-          } catch (logErr) {
-            console.error('[orders/transition] logging error', logErr);
-          }
           await session.abortTransaction();
           session.endSession();
           throw err;
