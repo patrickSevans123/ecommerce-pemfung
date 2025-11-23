@@ -9,6 +9,7 @@ import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { productsAPI } from '@/utils/api';
 import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
+import Navbar from '@/components/navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -89,25 +90,7 @@ export default function SellerProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-gray-900">
-              ECommerce
-            </Link>
-            <nav className="flex items-center gap-4">
-              <Link href="/seller/dashboard" className="text-sm text-gray-600 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <span className="text-sm text-gray-600">{user.name || user.email}</span>
-              <Button variant="outline" onClick={handleLogout}>
-                Logout
-              </Button>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

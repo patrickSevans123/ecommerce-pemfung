@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { balanceAPI } from '@/utils/api/balance';
 import { sumBalanceEvents } from '@/lib/balance';
 import { Button } from '@/components/ui/button';
+import Navbar from '@/components/navbar';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader } from '@/components/loader';
@@ -99,15 +100,11 @@ export default function BalancePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <header className="mb-6 flex items-center justify-between">
+      <Navbar />
+
+      <div className="mb-6">
         <h1 className="text-3xl font-bold">Balance Management</h1>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-600">{user?.name || user?.email}</div>
-          <Button variant="outline" onClick={() => { logout(); window.location.href = '/'; }}>
-            Logout
-          </Button>
-        </div>
-      </header>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
