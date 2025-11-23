@@ -4,11 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAuthStore } from '@/store/authStore';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { cartAPI, productsAPI, promoCodesAPI, balanceAPI } from '@/utils/api';
 import { checkoutAPI } from '@/utils/api/checkout';
-import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';
 import { Input } from '@/components/ui/input';
@@ -49,7 +47,6 @@ const fetchCartItemWithProduct = async (
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { logout } = useAuthStore();
   const { isLoading: authLoading, user } = useProtectedRoute(['buyer']);
 
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);

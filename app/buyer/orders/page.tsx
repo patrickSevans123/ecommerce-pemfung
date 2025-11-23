@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import Navbar from '@/components/navbar';
 import { Loader } from '@/components/loader';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableHeader,
@@ -16,7 +16,6 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useAuthStore } from '@/store/authStore';
 
 export default function BuyerOrdersPage() {
   const { isLoading, user } = useProtectedRoute(['buyer']);
@@ -38,6 +37,7 @@ export default function BuyerOrdersPage() {
 
   useEffect(() => {
     if (user?.id) fetchOrders();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const fetchOrders = async () => {

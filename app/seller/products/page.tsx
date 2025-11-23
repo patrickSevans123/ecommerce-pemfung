@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
@@ -31,8 +30,7 @@ import {
 import { Loader } from '@/components/loader';
 
 export default function SellerProductsPage() {
-  const router = useRouter();
-  const { logout, token } = useAuthStore();
+  const { token } = useAuthStore();
   const { isLoading: authLoading, user } = useProtectedRoute(['seller']);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);

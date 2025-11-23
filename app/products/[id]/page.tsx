@@ -19,7 +19,7 @@ import { parseValidationError } from '@/lib/fp/error-parsers';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -354,7 +354,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     </Button>
                     <Button
                       onClick={handleBuyNow}
-                      disabled={product.stock === 0}
+                      disabled={isBuyingNow || product.stock === 0}
                       className="flex-1"
                     >
                       Buy Now

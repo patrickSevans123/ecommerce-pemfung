@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import Navbar from '@/components/navbar';
 import { Loader } from '@/components/loader';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import {
@@ -38,6 +38,7 @@ export default function SellerOrdersPage() {
 
   useEffect(() => {
     if (user?.id) fetchOrders();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const fetchOrders = async () => {
@@ -156,7 +157,7 @@ export default function SellerOrdersPage() {
                             });
                             const totalForSeller = itemsForSeller.reduce((sum: number, it: any) => sum + ((it.price || 0) * (it.quantity || 1)), 0);
                             return formatCurrency(totalForSeller);
-                          } catch (e) {
+                          } catch {
                             return formatCurrency(order.total);
                           }
                         })()}
