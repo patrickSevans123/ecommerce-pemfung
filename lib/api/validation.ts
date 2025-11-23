@@ -24,7 +24,11 @@ export type ValidationResult<T> =
  * @returns Parsed JSON or null if parsing fails
  */
 export const parseJsonBody = async (request: Request): Promise<unknown | null> =>
-  request.json().catch(() => null);
+  request.json().catch((err) => {
+    // Log parsing errors to aid debugging invalid JSON requests
+    console.error('parseJsonBody: failed to parse JSON body', err);
+    return null;
+  });
 
 /**
  * Validate JSON body with Zod schema
@@ -48,6 +52,13 @@ export const validateSchema = <T>(
   const parsed = schema.safeParse(body);
 
   if (!parsed.success) {
+    // Log Zod validation details for debugging (will still return sanitized response)
+    try {
+      console.error('validateSchema: Zod validation failed', parsed.error.format());
+    } catch (e) {
+      console.error('validateSchema: Zod validation failed (could not format)', parsed.error);
+    }
+
     return {
       success: false,
       response: handleZodError(parsed.error),

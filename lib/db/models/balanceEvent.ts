@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 export interface BalanceEventDocument extends mongoose.Document {
   user: mongoose.Types.ObjectId;
   amount: number;
-  type: 'deposit' | 'withdrawn' | 'payment' | 'refund';
+  type: 'deposit' | 'withdrawn' | 'payment' | 'refund' | 'income';
   reference?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -15,7 +15,7 @@ const BalanceEventSchema = new Schema<BalanceEventDocument, BalanceEventModel>(
   {
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, required: true },
-    type: { type: String, enum: ['deposit', 'withdrawn', 'payment', 'refund'], required: true },
+  type: { type: String, enum: ['deposit', 'withdrawn', 'payment', 'refund', 'income'], required: true },
     reference: { type: String },
   },
   { timestamps: true }

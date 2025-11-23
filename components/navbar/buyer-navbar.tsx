@@ -38,9 +38,9 @@ export default function BuyerNavbar() {
 
             {isAuthenticated ? (
               <>
-                <Button asChild>
-                  <Link href={`/${user?.role}/dashboard`}>Dashboard</Link>
-                </Button>
+                <Link href={`/${user?.role}/dashboard`} className="text-sm text-gray-600 hover:text-gray-900">
+                  Dashboard
+                </Link>
                 <span className="text-sm text-gray-600">{user?.name || user?.email}</span>
                 <Button variant="outline" onClick={handleLogout}>
                   Logout

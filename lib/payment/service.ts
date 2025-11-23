@@ -306,27 +306,31 @@ export const createOrder = (
           shippingAddress,
         }], { session });
 
-        // Update product stock
-        await updateAllProductStocks(cart.items, session);
+        // For balance payments we defer stock updates, promo usage and cart clearing
+        // to the payment transaction so these operations occur only when payment succeeds.
+        if (paymentMethod.method !== 'balance') {
+          // Update product stock
+          await updateAllProductStocks(cart.items, session);
 
-        // Update promo code usage if applied
-        if (promoCode) {
-          await PromoCode.findByIdAndUpdate(
-            promoCode._id,
-            {
-              $inc: { usedCount: 1 },
-              $push: { appliesTo: order[0]._id }
-            },
+          // Update promo code usage if applied
+          if (promoCode) {
+            await PromoCode.findByIdAndUpdate(
+              promoCode._id,
+              {
+                $inc: { usedCount: 1 },
+                $push: { appliesTo: order[0]._id }
+              },
+              { session }
+            );
+          }
+
+          // Clear cart for non-balance payments
+          await Cart.findByIdAndUpdate(
+            cart._id,
+            { $set: { items: [] } },
             { session }
           );
         }
-
-        // Clear cart
-        await Cart.findByIdAndUpdate(
-          cart._id,
-          { $set: { items: [] } },
-          { session }
-        );
 
         await session.commitTransaction();
 
@@ -593,6 +597,32 @@ const executePaymentInTransaction = (
           throw balanceResult.error;
         }
 
+        // Update product stock now that payment is confirmed
+        // Ensure we reduce stock for each order item inside the same transaction
+        for (const item of context.order.items) {
+          const product = await Product.findById(item.product).session(session);
+          if (!product) {
+            throw createPaymentError(PaymentErrorCodes.PRODUCT_NOT_FOUND, `Product ${item.product} not found`);
+          }
+
+          if ((product.stock || 0) < item.quantity) {
+            throw insufficientStockError(product.title, product.stock || 0, item.quantity);
+          }
+
+          await Product.findByIdAndUpdate(
+            item.product,
+            { $inc: { stock: -item.quantity } },
+            { session }
+          );
+        }
+
+        // Clear cart for the user as part of the successful payment transaction
+        await Cart.findOneAndUpdate(
+          { user: context.userId },
+          { $set: { items: [] } },
+          { session }
+        );
+
         // Update order with promo
         const promoResult = await updateOrderWithPromo(context.order, context, session);
         if (promoResult.isErr()) {
@@ -602,6 +632,31 @@ const executePaymentInTransaction = (
         // Update shipping and mark as paid
         updateOrderWithShipping(context.order, context);
         markOrderAsPaid(context.order);
+
+        // --- Add seller credit events ---
+        // For each item in the order, credit the corresponding seller with the item total
+        // Accumulate amounts per seller to create one BalanceEvent per seller
+        const sellerAmounts: Record<string, number> = {};
+        for (const item of context.order.items) {
+          const sellerId = item.seller?.toString();
+          if (!sellerId) continue;
+          const itemTotal = (item.price || 0) * (item.quantity || 1);
+          sellerAmounts[sellerId] = (sellerAmounts[sellerId] || 0) + itemTotal;
+        }
+
+        const sellerEvents = Object.entries(sellerAmounts).map(([sellerId, amount]) => ({
+          user: new mongoose.Types.ObjectId(sellerId),
+          amount,
+          // Record seller proceeds as 'income'
+          type: 'income' as const,
+          reference: `Order sale: ${context.order._id}`,
+        }));
+
+        if (sellerEvents.length > 0) {
+          // Persist seller balance events inside the same transaction
+          await BalanceEvent.create(sellerEvents, { session });
+        }
+        // --- end seller credit events ---
 
         // Save order
         await context.order.save({ session });

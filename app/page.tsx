@@ -219,9 +219,15 @@ export default function Home() {
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full bg-white text-black hover:bg-gray-200" disabled={product.stock === 0}>
-                    {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
-                  </Button>
+                  {product.stock > 0 ? (
+                    <Button asChild className="w-full bg-white text-black hover:bg-gray-200">
+                      <Link href={`/products/${product._id}`}>View Product</Link>
+                    </Button>
+                  ) : (
+                    <Button className="w-full bg-white text-black hover:bg-gray-200" disabled>
+                      Out of Stock
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             ))}

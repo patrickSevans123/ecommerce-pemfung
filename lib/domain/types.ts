@@ -99,7 +99,11 @@ export type BalanceEventType =
   | { type: 'deposit' }
   | { type: 'withdrawn' }
   | { type: 'payment' }
-  | { type: 'refund' };
+  | { type: 'refund' }
+  | { type: 'income' };
+
+// New event type: income - used to represent seller income from sales
+
 
 // Domain entities
 export interface User {

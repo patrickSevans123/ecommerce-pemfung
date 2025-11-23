@@ -9,7 +9,7 @@ export interface BalanceResponse {
 export interface BalanceEventRecord {
   _id?: string;
   amount: number;
-  type: 'deposit' | 'withdrawn' | 'payment' | 'refund';
+  type: 'deposit' | 'withdrawn' | 'payment' | 'refund' | 'income';
   reference?: string;
   createdAt?: string;
 }
@@ -21,6 +21,6 @@ export const balanceAPI = {
   listEvents: (userId: string): Promise<BalanceEventRecord[]> =>
     fetchAPI<BalanceEventRecord[]>(`/balance-events?userId=${encodeURIComponent(userId)}`),
 
-  createEvent: (payload: { userId: string; amount: number; type: 'deposit' | 'withdrawn' | 'payment' | 'refund'; reference?: string }) =>
+  createEvent: (payload: { userId: string; amount: number; type: 'deposit' | 'withdrawn' | 'payment' | 'refund' | 'income'; reference?: string }) =>
     fetchAPI('/balance-events', { method: 'POST', body: JSON.stringify(payload) }),
 };

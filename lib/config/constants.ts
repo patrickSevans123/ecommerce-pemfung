@@ -1,9 +1,8 @@
 // Centralized constants for the application
 
 export const PAYMENT_CONSTANTS = {
-  FIXED_SHIPPING_COST: 10000,
-  MAX_CART_VALUE: 100000000,
-  MIN_ORDER_VALUE: 10000,
+  FIXED_SHIPPING_COST: 5,
+  MAX_CART_VALUE: 100000,
 } as const;
 
 export const VALIDATION_CONSTANTS = {

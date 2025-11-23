@@ -11,7 +11,7 @@ import {
 
 const updateBalanceEventSchema = z.object({
   amount: z.number().optional(),
-  type: z.enum(['deposit', 'withdrawn', 'payment']).optional(),
+  type: z.enum(['deposit', 'withdrawn', 'payment', 'income']).optional(),
   reference: z.string().optional(),
 });
 
