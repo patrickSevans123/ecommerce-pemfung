@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useAuthStore } from '@/store/authStore';
 import { productsAPI } from '@/utils/api';
 import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -22,10 +21,9 @@ import { Label } from '@/components/ui/label';
 import { FilterState, buildSearchParams } from '@/lib/fp/url-helpers';
 import Navbar from '@/components/navbar';
 
-export default function ProductsClient() {
+export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, user, logout } = useAuthStore();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -188,32 +186,77 @@ export default function ProductsClient() {
               <div className="space-y-2">
                 <Label htmlFor="minRating">Min Rating</Label>
                 <Select value={minRating || 'any'} onValueChange={(v) => setMinRating(v === 'any' ? '' : v)}>
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger id="minRating">
+                    <SelectValue placeholder="Any Rating" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="any">Any</SelectItem>
-                    <SelectItem value="1">1+</SelectItem>
-                    <SelectItem value="2">2+</SelectItem>
-                    <SelectItem value="3">3+</SelectItem>
-                    <SelectItem value="4">4+</SelectItem>
-                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="any">Any Rating</SelectItem>
+                    <SelectItem value="4">4+ Stars</SelectItem>
+                    <SelectItem value="3">3+ Stars</SelectItem>
+                    <SelectItem value="2">2+ Stars</SelectItem>
+                    <SelectItem value="1">1+ Stars</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            {/* Sort and Stock */}
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="space-y-2 flex-1 min-w-[200px]">
+                <Label htmlFor="sort">Sort By</Label>
+                <Select value={sortBy} onValueChange={(v: 'newest' | 'price-asc' | 'price-desc' | 'rating-desc') => setSortBy(v)}>
+                  <SelectTrigger id="sort">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                    <SelectItem value="rating-desc">Highest Rated</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-6">
+                <input
+                  type="checkbox"
+                  id="inStock"
+                  checked={inStockOnly}
+                  onChange={(e) => setInStockOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="inStock" className="cursor-pointer">
+                  In Stock Only
+                </Label>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button onClick={handleSearch} className="flex-1">
+                Apply Filters
+              </Button>
+              <Button variant="outline" onClick={handleClearFilters}>
+                Clear All
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Product List */}
+        {/* Products Grid */}
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-400">Loading products...</p>
+            <p className="text-gray-600">Loading products...</p>
           </div>
-        ) : !products || products.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-400">No products available yet.</p>
-          </div>
+        ) : products.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-gray-600 mb-4">No products found matching your criteria.</p>
+              <Button variant="outline" onClick={handleClearFilters}>
+                Clear Filters
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((product) => (
