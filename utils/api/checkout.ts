@@ -1,3 +1,4 @@
+import { OrderDocument } from '@/lib/db/models/order';
 import { fetchAPI } from './fetcher';
 
 export interface CheckoutRequest {
@@ -8,7 +9,7 @@ export interface CheckoutRequest {
 
 export interface CheckoutResponse {
   orderId: string;
-  order: any;
+  order: OrderDocument;
   message: string;
 }
 
