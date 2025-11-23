@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { useAuthStore } from '@/store/authStore';
-import { balanceAPI } from '@/utils/api/balance';
+import { balanceAPI } from '@/utils/api';
 import { sumBalanceEvents } from '@/lib/balance';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';
@@ -102,125 +102,103 @@ export default function BalancePage() {
     <>
       <Navbar />
 
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Balance Management</h1>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Current Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold">
-              ${typeof balance === 'number' ? balance.toFixed(2) : '0.00'}
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-6">
+          <div className="mb-8 flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Balance Management</h1>
+            <div className="text-right">
+              <div className="text-sm text-gray-500">Account</div>
+              <div className="font-medium">{user?.name || user?.email}</div>
             </div>
-            <p className="text-sm text-gray-500 mt-2">Events: {events.length}</p>
-            <div className="mt-4 text-sm text-gray-700">
-              <div className="font-medium">Pure calculation (fold):</div>
-              <div className="mt-2">
-                <ol className="list-decimal list-inside space-y-1 text-sm">
-                  {events.slice(0, 10).map((e, idx) => {
-                    const signed = (e.type === 'deposit' || e.type === 'refund') ? e.amount : -e.amount;
-                    return (
-                      <li key={e._id || idx}>
-                        {e.type} {e.amount}{' -> '}{signed >= 0 ? '+' : ''}{signed}
-                      </li>
-                    );
-                  })}
-                </ol>
-                <div className="mt-2">Computed total: <strong>${computedBalance.toFixed(2)}</strong></div>
-              </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left: Balance + actions */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-500">Current Balance</div>
+                    <div className="text-4xl font-extrabold mt-2">${typeof balance === 'number' ? balance.toFixed(2) : '0.00'}</div>
+                    <div className="text-sm text-gray-400 mt-1">Events: {events.length}</div>
+                  </div>
+                  <div className="text-green-600 font-medium">{computedBalance >= 0 ? '+' : '-'}${Math.abs(computedBalance).toFixed(2)}</div>
+                </div>
+              </Card>
+
+              <Card className="p-4">
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex gap-3 items-center">
+                      <Input value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} type="number" placeholder="Amount" />
+                      <Button onClick={() => handleCreate('deposit')} disabled={isSubmitting} className="whitespace-nowrap">
+                        {isSubmitting ? 'Processing...' : 'Deposit'}
+                      </Button>
+                    </div>
+
+                    <div className="flex gap-3 items-center">
+                      <Input value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} type="number" placeholder="Amount" />
+                      <Button variant="destructive" onClick={() => handleCreate('withdrawn')} disabled={isSubmitting} className="whitespace-nowrap">
+                        {isSubmitting ? 'Processing...' : 'Withdraw'}
+                      </Button>
+                    </div>
+
+                    {errors.length > 0 && (
+                      <div className="text-sm text-red-600">
+                        {errors.map((err, i) => (
+                          <div key={i}>• {err}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Deposit</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center gap-4">
-              <div className="w-40">
-                <Label>Amount</Label>
-                <Input value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} type="number" />
-              </div>
-              <div>
-                <Button onClick={() => handleCreate('deposit')} disabled={isSubmitting}>
-                  {isSubmitting ? 'Processing...' : 'Deposit'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Withdraw</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center gap-4">
-              <div className="w-40">
-                <Label>Amount</Label>
-                <Input value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} type="number" />
-              </div>
-              <div>
-                <Button variant="destructive" onClick={() => handleCreate('withdrawn')} disabled={isSubmitting}>
-                  {isSubmitting ? 'Processing...' : 'Withdraw'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {errors.length > 0 && (
-            <Card className="border-red-200 bg-red-50">
-              <CardContent>
-                <ul className="text-sm text-red-600 list-disc list-inside">
-                  {errors.map((err, i) => (
-                    <li key={i}>{err}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b">
-                    <tr>
-                      <th className="text-left p-2">Type</th>
-                      <th className="text-right p-2">Amount</th>
-                      <th className="text-left p-2">Reference / Order</th>
-                      <th className="text-left p-2">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {events.map((e) => {
-                      const isPositive = e.type === 'deposit' || e.type === 'refund';
-                      return (
-                        <tr key={e._id} className={isPositive ? 'text-green-700' : 'text-red-600'}>
-                          <td className="p-2">{e.type}</td>
-                          <td className="p-2 text-right">${e.amount.toFixed(2)}</td>
-                          <td className="p-2">{e.reference || '-'}</td>
-                          <td className="p-2">{e.createdAt ? new Date(e.createdAt).toLocaleString() : '-'}</td>
+            {/* Right: Transaction history */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transaction History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm divide-y">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="text-left p-3">Type</th>
+                          <th className="text-right p-3">Amount</th>
+                          <th className="text-left p-3">Reference</th>
+                          <th className="text-left p-3">Date</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <div className="text-sm text-gray-500">Showing latest {events.length} events</div>
-            </CardFooter>
-          </Card>
+                      </thead>
+                      <tbody className="bg-white">
+                        {events.map((e) => {
+                          const isPositive = e.type === 'deposit' || e.type === 'refund';
+                          return (
+                            <tr key={e._id} className={isPositive ? 'text-green-700' : 'text-red-600'}>
+                              <td className="p-3">{e.type.charAt(0).toUpperCase() + e.type.slice(1)}</td>
+                              <td className="p-3 text-right">${e.amount.toFixed(2)}</td>
+                              <td className="p-3">{e.reference || '-'}</td>
+                              <td className="p-3">{e.createdAt ? new Date(e.createdAt).toLocaleString() : '-'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <div className="text-sm text-gray-500">Showing latest {events.length} events</div>
+                </CardFooter>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
   </>
   );
 }
