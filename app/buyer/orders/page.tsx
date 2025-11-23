@@ -37,7 +37,7 @@ export default function BuyerOrdersPage() {
 
   useEffect(() => {
     if (user?.id) fetchOrders();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const fetchOrders = async () => {
@@ -71,8 +71,8 @@ export default function BuyerOrdersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: { type: 'Deliver' } }),
       });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || json?.message || 'Failed');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || json?.message || 'Failed');
       await fetchOrders();
       showMessage('Success', 'Order status updated');
     } catch (err) {
