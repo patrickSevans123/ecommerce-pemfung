@@ -38,7 +38,7 @@ export default function SellerOrdersPage() {
 
   useEffect(() => {
     if (user?.id) fetchOrders();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const fetchOrders = async () => {
@@ -71,15 +71,15 @@ export default function SellerOrdersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: { type: 'Ship', trackingNumber: trackingValue || '' } }),
       });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || json?.message || 'Failed');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || json?.message || 'Failed');
       setDialogOpen(false);
       setSelectedOrderId(null);
       await fetchOrders();
-  showMessage('Success', 'Order updated to Shipped');
+      showMessage('Success', 'Order updated to Shipped');
     } catch (err) {
       console.error(err);
-  showMessage('Error', 'Failed to update order status');
+      showMessage('Error', 'Failed to update order status');
     } finally {
       setActionLoading(null);
     }
