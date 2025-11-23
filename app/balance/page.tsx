@@ -99,14 +99,15 @@ export default function BalancePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <>
       <Navbar />
 
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Balance Management</h1>
-      </div>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Balance Management</h1>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Current Balance</CardTitle>
@@ -220,5 +221,6 @@ export default function BalancePage() {
         </div>
       </div>
     </div>
+  </>
   );
 }
