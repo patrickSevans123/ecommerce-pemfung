@@ -9,6 +9,7 @@ import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { cartAPI, productsAPI } from '@/utils/api';
 import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
+import Navbar from '@/components/navbar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -222,28 +223,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-gray-900">
-              ECommerce
-            </Link>
-            <nav className="flex items-center gap-4">
-              <Link href="/buyer/dashboard" className="text-sm text-gray-600 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <Link href="/products" className="text-sm text-gray-600 hover:text-gray-900">
-                Products
-              </Link>
-              <span className="text-sm text-gray-600">{user.name || user.email}</span>
-              <Button variant="outline" onClick={handleLogout}>
-                Logout
-              </Button>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

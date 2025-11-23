@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { productsAPI, promoCodesAPI } from '@/utils/api';
 import { Product, PromoCode } from '@/types';
 import { Button } from '@/components/ui/button';
+import Navbar from '@/components/navbar';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -57,37 +58,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-gray-900">
-              ECommerce
-            </Link>
-            <nav className="flex items-center gap-4">
-              {isAuthenticated ? (
-                <>
-                  <span className="text-sm text-gray-600">
-                    Welcome, {user?.name || user?.email}
-                  </span>
-                  <Button asChild>
-                    <Link href={`/${user?.role}/dashboard`}>Dashboard</Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline" asChild className="bg-white text-black">
-                    <Link href="/login">Login</Link>
-                  </Button>
-                  <Button asChild className="bg-black text-white">
-                    <Link href="/register">Register</Link>
-                  </Button>
-                </>
-              )}
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="bg-black text-white">
