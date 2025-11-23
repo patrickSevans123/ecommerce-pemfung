@@ -66,18 +66,25 @@ export default function BuyerOrdersPage() {
     if (!orderId) return;
     try {
       setActionLoading(orderId);
+      
+      // Call the transition API to mark as delivered
       const res = await fetch(`/api/orders/${orderId}/transition`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: { type: 'Deliver' } }),
       });
+      
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || json?.message || 'Failed');
+      
+      if (!res.ok) {
+        throw new Error(json?.error || json?.message || 'Failed to update order');
+      }
+      
       await fetchOrders();
-      showMessage('Success', 'Order status updated');
+      showMessage('Success', 'Order marked as delivered');
     } catch (err) {
-      console.error(err);
-      showMessage('Error', 'Failed to update order status');
+      console.error('Failed to mark order as delivered:', err);
+      showMessage('Error', err instanceof Error ? err.message : 'Failed to update order status');
     } finally {
       setActionLoading(null);
       setConfirmDialogOpen(false);
