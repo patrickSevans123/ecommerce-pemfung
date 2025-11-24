@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuthStore } from '@/store/authStore';
 import { notificationsAPI } from '@/utils/api';
 import { Notification } from '@/types/api';
 import { Button } from '@/components/ui/button';
@@ -15,8 +13,6 @@ import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { Loader } from '@/components/loader';
 
 export default function SellerDashboard() {
-  const router = useRouter();
-  const { logout } = useAuthStore();
   const { isLoading, user } = useProtectedRoute(['seller']);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -104,11 +100,6 @@ export default function SellerDashboard() {
       eventSource.close();
     };
   }, [user?.id, user?.role]);
-
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
 
   if (isLoading) {
     return <Loader />;

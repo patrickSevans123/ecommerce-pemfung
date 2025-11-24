@@ -42,7 +42,7 @@ export async function POST(request: Request) {
           // Debug: log payment service error for visibility
           try {
             console.error('checkoutPipeline failed:', error);
-          } catch (e) {
+          } catch {
             console.error('checkoutPipeline failed (unserializable error)');
           }
           const statusCode =
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
             // Debug: log payment processing error
             try {
               console.error('paymentPipeline failed:', error);
-            } catch (e) {
+            } catch {
               console.error('paymentPipeline failed (unserializable error)');
             }
             const statusCode =

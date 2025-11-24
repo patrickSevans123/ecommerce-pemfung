@@ -4,11 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAuthStore } from '@/store/authStore';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { cartAPI, productsAPI, promoCodesAPI, balanceAPI } from '@/utils/api';
 import { checkoutAPI } from '@/utils/api/checkout';
-import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';
 import { Input } from '@/components/ui/input';
@@ -25,11 +23,25 @@ import { PromoCode } from '@/types';
 import { toast } from 'sonner';
 
 import type { CartItemWithProduct as HelperCartItem } from '@/lib/fp/cart-helpers';
+import { ApiError } from '@/lib/api';
 
 type CartItemWithProduct = HelperCartItem;
 
+interface CartItemInput {
+  product?: string;
+  productId?: string;
+  quantity: number;
+}
+
+interface CheckoutPayload {
+  userId: string;
+  paymentMethod: 'balance' | 'cash_on_delivery';
+  shippingAddress: string;
+  promoCode?: string;
+}
+
 const fetchCartItemWithProduct = async (
-  item: { product?: string; productId?: string; quantity: number }
+  item: CartItemInput
 ): Promise<CartItemWithProduct> => {
   const productId = extractProductId(item);
 
@@ -49,7 +61,6 @@ const fetchCartItemWithProduct = async (
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { logout } = useAuthStore();
   const { isLoading: authLoading, user } = useProtectedRoute(['buyer']);
 
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
@@ -58,7 +69,7 @@ export default function CheckoutPage() {
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [shipping, setShipping] = useState(5.0); // client-side assumed shipping
+  const [shipping, setShipping] = useState(5.0);
   const [paymentMethod, setPaymentMethod] = useState<'balance' | 'cash_on_delivery'>('balance');
   const [shippingAddress, setShippingAddress] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -83,8 +94,8 @@ export default function CheckoutPage() {
       // Validate cart
       if (cart.items.length > 0) {
         try {
-          const validationItems = cart.items.map((item: any) => ({
-            productId: item.product || item.productId || '',
+          const validationItems = cart.items.map((item) => ({
+            productId: extractProductId(item) || '',
             quantity: item.quantity,
           }));
 
@@ -112,10 +123,9 @@ export default function CheckoutPage() {
       return sum;
     }, 0);
   }, [cartItems]);
+  
   const total = useMemo(() => Math.max(0, subtotal + shipping - discountAmount), [subtotal, shipping, discountAmount]);
   const totalItemsCount = sumQuantities(cartItems);
-
-  // Items are fixed for checkout — no selection controls required
 
   const handleApplyPromo = async () => {
     if (!promoInput) return;
@@ -129,7 +139,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Basic client-side calculation (server will verify on final checkout)
       let discount = 0;
       if (found.discount.kind === 'percentage' && found.discount.percent) {
         discount = (subtotal * (found.discount.percent || 0)) / 100;
@@ -148,8 +157,6 @@ export default function CheckoutPage() {
     }
   };
 
-  
-
   const handleProceed = async () => {
     if (!user?.id) {
       router.push('/login');
@@ -162,7 +169,7 @@ export default function CheckoutPage() {
     }
 
     if (!shippingAddress || shippingAddress.length < 10) {
-      toast.error('Please provide a valid shipping address');
+      toast.error('Shipping address must be at least 10 characters');
       return;
     }
 
@@ -186,49 +193,45 @@ export default function CheckoutPage() {
         }
       }
 
-      const payload = {
+      const payload: CheckoutPayload = {
         userId: user.id,
         paymentMethod,
         shippingAddress,
         promoCode: appliedPromo?.code,
-      } as any;
+      };
 
       const res = await checkoutAPI.createCheckout(payload);
       if (res && res.orderId) {
         toast.success('Order created');
-  // After checkout succeed, navigate buyer to their orders page
-  router.push('/buyer/orders');
+        router.push('/buyer/orders');
       } else {
         toast.error('Failed to create order');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Checkout failed:', error);
-      // Prefer structured API error payload if available
-      const apiError = error?.response?.data;
+      const apiError = error as ApiError;
+      
       if (apiError) {
-        // Show main message
-        const main = apiError.error || apiError.message || 'Checkout failed';
+        const main = apiError.error || apiError.details || 'Checkout failed';
 
-        // If details is an object (zod format or error details), stringify or map it
         let detailMessage = '';
         if (apiError.details) {
           try {
             if (typeof apiError.details === 'string') {
               detailMessage = apiError.details;
             } else if (typeof apiError.details === 'object') {
-              // Try to extract readable messages from Zod or payment error details
               detailMessage = JSON.stringify(apiError.details);
             } else {
               detailMessage = String(apiError.details);
             }
-          } catch (e) {
+          } catch {
             detailMessage = String(apiError.details);
           }
         }
 
         toast.error(`${main}${detailMessage ? ': ' + detailMessage : ''}`);
       } else {
-        const detail = error?.message || String(error);
+        const detail = error || String(error);
         toast.error('Checkout failed: ' + (detail || 'Unknown'));
       }
     } finally {
@@ -278,8 +281,6 @@ export default function CheckoutPage() {
                 <Card key={item.productId}>
                   <CardContent className="p-4">
                     <div className="flex gap-4">
-                      {/* fixed item view — quantity shown below */}
-
                       <Link href={`/products/${item.productId}`} className="shrink-0">
                         <div className="w-24 h-24 bg-gray-200 rounded overflow-hidden relative">
                           {item.product?.images && item.product.images.length > 0 ? (

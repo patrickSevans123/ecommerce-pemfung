@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
 import { notificationsAPI, cartAPI } from '@/utils/api';
 import { Notification } from '@/types/api';
 import { Button } from '@/components/ui/button';
@@ -15,8 +13,6 @@ import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { Loader } from '@/components/loader';
 
 export default function BuyerDashboard() {
-  const router = useRouter();
-  const { logout } = useAuthStore();
   const { isLoading, user } = useProtectedRoute(['buyer']);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
@@ -54,11 +50,6 @@ export default function BuyerDashboard() {
       fetchCartCount();
     }
   }, [user]);
-
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
 
   if (isLoading) {
     return <Loader />;

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,7 +37,7 @@ type ProductFormData = z.infer<typeof productSchema>;
 
 export default function AddProductPage() {
   const router = useRouter();
-  const { token, logout } = useAuthStore();
+  const { token } = useAuthStore();
   const { isLoading: authLoading, user } = useProtectedRoute(['seller']);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,11 +93,6 @@ export default function AddProductPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleLogout = () => {
-    logout();
-    router.push('/');
   };
 
   if (authLoading) {

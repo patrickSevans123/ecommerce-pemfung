@@ -11,7 +11,13 @@ export async function GET(request: Request) {
     const userId = url.searchParams.get('userId');
     const sellerId = url.searchParams.get('sellerId');
 
-    const filter: any = {};
+    interface OrderFilter {
+      user?: mongoose.Types.ObjectId;
+      'items.seller'?: mongoose.Types.ObjectId;
+    }
+
+    const filter: OrderFilter = {};
+
     if (userId) {
       if (!mongoose.Types.ObjectId.isValid(userId)) return badRequestError('Invalid userId');
       filter.user = new mongoose.Types.ObjectId(userId);
@@ -19,7 +25,6 @@ export async function GET(request: Request) {
 
     if (sellerId) {
       if (!mongoose.Types.ObjectId.isValid(sellerId)) return badRequestError('Invalid sellerId');
-      // find orders that contain items from this seller
       filter['items.seller'] = new mongoose.Types.ObjectId(sellerId);
     }
 

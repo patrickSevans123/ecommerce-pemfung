@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useAuthStore } from '@/store/authStore';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { cartAPI, productsAPI } from '@/utils/api';
 import { Product } from '@/types';
@@ -61,7 +60,6 @@ const fetchCartItemWithProduct = async (
 
 export default function CartPage() {
   const router = useRouter();
-  const { logout } = useAuthStore();
   const { isLoading: authLoading, user } = useProtectedRoute(['buyer']);
 
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
@@ -188,11 +186,6 @@ export default function CartPage() {
       return;
     }
     router.push('/checkout');
-  };
-
-  const handleLogout = () => {
-    logout();
-    router.push('/');
   };
 
   const handleToggleSelection = (productId: string) => {

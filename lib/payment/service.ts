@@ -306,31 +306,27 @@ export const createOrder = (
           shippingAddress,
         }], { session });
 
-        // For balance payments we defer stock updates, promo usage and cart clearing
-        // to the payment transaction so these operations occur only when payment succeeds.
-        if (paymentMethod.method !== 'balance') {
-          // Update product stock
-          await updateAllProductStocks(cart.items, session);
+        // Update product stock
+        await updateAllProductStocks(cart.items, session);
 
-          // Update promo code usage if applied
-          if (promoCode) {
-            await PromoCode.findByIdAndUpdate(
-              promoCode._id,
-              {
-                $inc: { usedCount: 1 },
-                $push: { appliesTo: order[0]._id }
-              },
-              { session }
-            );
-          }
-
-          // Clear cart for non-balance payments
-          await Cart.findByIdAndUpdate(
-            cart._id,
-            { $set: { items: [] } },
+        // Update promo code usage if applied
+        if (promoCode) {
+          await PromoCode.findByIdAndUpdate(
+            promoCode._id,
+            {
+              $inc: { usedCount: 1 },
+              $push: { appliesTo: order[0]._id }
+            },
             { session }
           );
         }
+
+        // Clear cart
+        await Cart.findByIdAndUpdate(
+          cart._id,
+          { $set: { items: [] } },
+          { session }
+        );
 
         await session.commitTransaction();
 
@@ -597,32 +593,6 @@ const executePaymentInTransaction = (
           throw balanceResult.error;
         }
 
-        // Update product stock now that payment is confirmed
-        // Ensure we reduce stock for each order item inside the same transaction
-        for (const item of context.order.items) {
-          const product = await Product.findById(item.product).session(session);
-          if (!product) {
-            throw createPaymentError(PaymentErrorCodes.PRODUCT_NOT_FOUND, `Product ${item.product} not found`);
-          }
-
-          if ((product.stock || 0) < item.quantity) {
-            throw insufficientStockError(product.title, product.stock || 0, item.quantity);
-          }
-
-          await Product.findByIdAndUpdate(
-            item.product,
-            { $inc: { stock: -item.quantity } },
-            { session }
-          );
-        }
-
-        // Clear cart for the user as part of the successful payment transaction
-        await Cart.findOneAndUpdate(
-          { user: context.userId },
-          { $set: { items: [] } },
-          { session }
-        );
-
         // Update order with promo
         const promoResult = await updateOrderWithPromo(context.order, context, session);
         if (promoResult.isErr()) {
@@ -632,38 +602,6 @@ const executePaymentInTransaction = (
         // Update shipping and mark as paid
         updateOrderWithShipping(context.order, context);
         markOrderAsPaid(context.order);
-
-        // --- Add seller credit events ---
-        // Group items by seller so each seller receives a single BalanceEvent with their total
-        const sellerAmounts = new Map<string, number>();
-        for (const item of context.order.items) {
-          // Normalize seller id to string safely (handles ObjectId or plain string)
-          const rawSeller = (item.seller as any);
-          const sellerId = rawSeller && typeof rawSeller.toString === 'function'
-            ? rawSeller.toString()
-            : String(rawSeller || '');
-
-          if (!sellerId) continue;
-
-          const itemTotal = (item.price || 0) * (item.quantity || 1);
-          const prev = sellerAmounts.get(sellerId) || 0;
-          sellerAmounts.set(sellerId, prev + itemTotal);
-        }
-
-        const sellerEvents = Array.from(sellerAmounts.entries()).map(([sellerId, amount]) => ({
-          user: new mongoose.Types.ObjectId(sellerId),
-          amount,
-          // Record seller proceeds as 'income'
-          type: 'income' as const,
-          reference: `Order sale: ${context.order._id}`,
-        }));
-
-        if (sellerEvents.length > 0) {
-          // Persist seller balance events inside the same transaction
-          // When creating multiple documents with a session, Mongoose requires `ordered: true`.
-          await BalanceEvent.create(sellerEvents, { session, ordered: true });
-        }
-        // --- end seller credit events ---
 
         // Save order
         await context.order.save({ session });

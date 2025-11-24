@@ -56,7 +56,7 @@ export const transitionOrder = (
 // Get allowed events for current status
 export const getAllowedEvents = (status: OrderStatus): OrderEvent['type'][] => {
   return match(status)
-    .with({ status: 'pending' }, () => ['ConfirmPayment', 'Cancel'] as OrderEvent['type'][])
+    .with({ status: 'pending' }, () => ['ConfirmPayment', 'Ship', 'Cancel'] as OrderEvent['type'][])
     .with({ status: 'paid' }, () => ['Ship', 'Refund'] as OrderEvent['type'][])
     .with({ status: 'shipped' }, () => ['Deliver'] as OrderEvent['type'][])
     .with({ status: 'delivered' }, () => [] as OrderEvent['type'][])

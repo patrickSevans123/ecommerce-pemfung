@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import Navbar from '@/components/navbar';
 import { Loader } from '@/components/loader';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableHeader,
@@ -16,7 +16,6 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useAuthStore } from '@/store/authStore';
 
 export default function BuyerOrdersPage() {
   const { isLoading, user } = useProtectedRoute(['buyer']);
@@ -38,6 +37,7 @@ export default function BuyerOrdersPage() {
 
   useEffect(() => {
     if (user?.id) fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const fetchOrders = async () => {
@@ -66,18 +66,25 @@ export default function BuyerOrdersPage() {
     if (!orderId) return;
     try {
       setActionLoading(orderId);
+      
+      // Call the transition API to mark as delivered
       const res = await fetch(`/api/orders/${orderId}/transition`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: { type: 'Deliver' } }),
       });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || json?.message || 'Failed');
+      
+      const json = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(json?.error || json?.message || 'Failed to update order');
+      }
+      
       await fetchOrders();
-      showMessage('Success', 'Order status updated');
+      showMessage('Success', 'Order marked as delivered');
     } catch (err) {
-      console.error(err);
-      showMessage('Error', 'Failed to update order status');
+      console.error('Failed to mark order as delivered:', err);
+      showMessage('Error', err instanceof Error ? err.message : 'Failed to update order status');
     } finally {
       setActionLoading(null);
       setConfirmDialogOpen(false);
