@@ -246,7 +246,7 @@ export default function CheckoutPage() {
       if (items && items.length > 0) payload.items = items;
 
       const res = await checkoutAPI.createCheckout(payload);
-      if (res && res.orderId) {
+      if (res && res.orders && res.orders.length > 0) {
         toast.success('Order created');
         router.push('/buyer/orders');
       } else {

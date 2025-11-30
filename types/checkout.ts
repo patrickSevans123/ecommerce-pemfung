@@ -1,4 +1,4 @@
-import { OrderDocument } from '@/lib/db/models/order';
+import { PaymentSuccess } from '@/lib/payment';
 
 export interface CheckoutPayload {
   userId: string;
@@ -22,7 +22,6 @@ export interface CheckoutRequestWithItems extends CheckoutRequest {
 }
 
 export interface CheckoutResponse {
-  orderId: string;
-  order: OrderDocument;
+  orders: PaymentSuccess[];
   message: string;
 }

@@ -47,3 +47,9 @@ export interface PaymentSuccess {
   order: OrderDocument;
   message: string;
 }
+
+// Multi-Order Payment Success Result
+export interface MultiOrderPaymentSuccess {
+  orders: PaymentSuccess[];
+  message: string; // Overall message for multiple orders
+}

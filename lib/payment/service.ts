@@ -24,6 +24,7 @@ import type {
   PromoAppliedContext,
   OrderPaymentContext,
   PaymentSuccess,
+  MultiOrderPaymentSuccess, // Add this
 } from './types';
 
 // Re-export constants for backward compatibility
@@ -365,46 +366,116 @@ const updateAllProductStocks = (
 // Step 4: Create Order
 export const createOrder = (
   context: PromoAppliedContext
-): ResultAsync<PaymentSuccess, PaymentError> => {
+): ResultAsync<MultiOrderPaymentSuccess, PaymentError> => {
   return ResultAsync.fromPromise(
     (async () => {
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        const { cart, selectedItems, products, userId, subtotal, shipping, discount, total, promoCode, shippingAddress, paymentMethod } = context;
+        const { cart, selectedItems, products, userId, promoCode, shippingAddress, paymentMethod } = context;
 
         // Determine which items to order: selectedItems if provided, otherwise full cart
         const itemsToOrder = selectedItems && selectedItems.length > 0 ? selectedItems : cart.items;
 
-        // Create order items using selected items
-        const orderItems = itemsToOrder.map(createOrderItem(products));
+        if (!itemsToOrder || itemsToOrder.length === 0) {
+          throw cartEmptyError();
+        }
 
-        // Create order with pending status
-        const order = await Order.create([{
-          user: userId,
-          items: orderItems,
-          subtotal,
-          shipping,
-          discount,
-          promoCode: promoCode?._id,
-          promoCodeApplied: promoCode?.code,
-          total,
-          status: { status: 'pending' } as OrderStatus,
-          payment: paymentMethod,
-          shippingAddress,
-        }], { session });
+        const ordersCreated: PaymentSuccess[] = [];
+        const allCreatedOrderIds: mongoose.Types.ObjectId[] = [];
+        const orderedProductObjectIds: mongoose.Types.ObjectId[] = []; // To track all products ordered for cart removal
 
-        // Update product stock for ordered items
-        await updateAllProductStocks(itemsToOrder, session);
+        // Group items by seller
+        const sellerGroupedItems = new Map<string, CartItemDocument[]>();
+        itemsToOrder.forEach(item => {
+          const product = products.get(item.product.toString());
+          if (product && product.seller) {
+            const sellerId = product.seller.toString();
+            if (!sellerGroupedItems.has(sellerId)) {
+              sellerGroupedItems.set(sellerId, []);
+            }
+            sellerGroupedItems.get(sellerId)!.push(item);
+            orderedProductObjectIds.push(item.product as mongoose.Types.ObjectId);
+          } else {
+            // This case should ideally not happen if validateCart/validateItems passed
+            throw createPaymentError(
+              PaymentErrorCodes.PRODUCT_NOT_FOUND,
+              `Product ${item.product} for seller grouping not found or has no seller`
+            );
+          }
+        });
 
-        // Update promo code usage if applied
-        if (promoCode) {
+        // Calculate overall subtotal for proration if a fixed discount is applied across the whole cart
+        const overallSubtotalForProration = context.subtotal;
+
+        for (const [sellerId, sellerItems] of sellerGroupedItems.entries()) {
+          // Calculate subtotal for the current seller's items
+          const sellerSubtotal = sellerItems.reduce((sum: number, item: CartItemDocument) => {
+            const product = products.get(item.product.toString());
+            return sum + (product?.price || 0) * item.quantity;
+          }, 0);
+
+          let sellerShipping: number = PAYMENT_CONSTANTS.FIXED_SHIPPING_COST;
+          let sellerDiscount = 0;
+
+          if (promoCode) {
+            if (promoCode.discount.kind === 'percentage' && promoCode.discount.percent) {
+              sellerDiscount = (sellerSubtotal * promoCode.discount.percent) / 100;
+            } else if (promoCode.discount.kind === 'fixed' && promoCode.discount.amount) {
+              // Prorate fixed discount based on this seller's subtotal relative to the overall original subtotal
+              if (overallSubtotalForProration > 0) {
+                sellerDiscount = (sellerSubtotal / overallSubtotalForProration) * promoCode.discount.amount;
+              } else {
+                sellerDiscount = 0; // Avoid division by zero if cart was empty or items had 0 price
+              }
+            } else if (promoCode.discount.kind === 'free_shipping') {
+              sellerShipping = 0;
+            }
+          }
+
+          // Ensure discount doesn't make total negative
+          sellerDiscount = Math.min(sellerDiscount, sellerSubtotal + sellerShipping);
+
+          const sellerTotal = sellerSubtotal + sellerShipping - sellerDiscount;
+
+          // Create order items for this seller
+          const orderItems = sellerItems.map(createOrderItem(products));
+
+          // Create order with pending status for this seller
+          const order = await Order.create([{
+            user: userId,
+            items: orderItems,
+            subtotal: sellerSubtotal,
+            shipping: sellerShipping,
+            discount: sellerDiscount,
+            promoCode: promoCode?._id,
+            promoCodeApplied: promoCode?.code,
+            total: sellerTotal,
+            status: { status: 'pending' } as OrderStatus,
+            payment: paymentMethod,
+            shippingAddress,
+          }], { session });
+
+          const createdOrder = order[0] as OrderDocument;
+          allCreatedOrderIds.push(createdOrder._id as mongoose.Types.ObjectId);
+          ordersCreated.push({
+            orderId: (createdOrder._id as mongoose.Types.ObjectId).toString(),
+            order: createdOrder,
+            message: `Order for seller ${sellerId} created successfully.`,
+          });
+
+          // Update product stock for ordered items from this seller
+          await updateAllProductStocks(sellerItems, session);
+        }
+
+        // Update promo code usage if applied (for all created orders from this transaction)
+        if (promoCode && allCreatedOrderIds.length > 0) {
           await PromoCode.findByIdAndUpdate(
             promoCode._id,
             {
-              $inc: { usedCount: 1 },
-              $push: { appliesTo: order[0]._id }
+              $inc: { usedCount: 1 }, // Increment by 1 for the whole checkout transaction
+              $push: { appliesTo: { $each: allCreatedOrderIds } } // Push all order IDs
             },
             { session }
           );
@@ -413,7 +484,7 @@ export const createOrder = (
         // Remove ordered items from the user's cart (keep remaining items)
         const originalItems = (cart.items || []) as CartItemDocument[];
         const remainingItems = originalItems.filter((orig) => {
-          return !itemsToOrder.some((ordered) => (ordered.product as mongoose.Types.ObjectId).toString() === (orig.product as mongoose.Types.ObjectId).toString());
+          return !orderedProductObjectIds.some((orderedProductId) => orderedProductId.equals(orig.product));
         });
 
         await Cart.findByIdAndUpdate(
@@ -424,28 +495,26 @@ export const createOrder = (
 
         await session.commitTransaction();
 
-        const createdOrder = order[0] as OrderDocument;
-        const orderId = (createdOrder._id as mongoose.Types.ObjectId).toString();
-
-        // Emit OrderPlaced notification (fire-and-forget)
-        // NOTE: Seller notification will be sent only after payment is confirmed
-        emitEvent({
-          type: 'ORDER_PLACED',
-          userId,
-          orderId,
-          total,
-          sellerId: createdOrder.items[0]?.seller?.toString() || '',
-          data: {
-            productName: createdOrder.items[0]?.name || 'Product',
-            quantity: createdOrder.items[0]?.quantity || 1,
-            totalAmount: total,
-          },
-        }).catch(error => console.error('Failed to emit OrderPlaced event:', error));
+        // Emit OrderPlaced notification for EACH created order (fire-and-forget)
+        ordersCreated.forEach(orderSuccess => {
+          const createdOrder = orderSuccess.order;
+          emitEvent({
+            type: 'ORDER_PLACED',
+            userId,
+            orderId: orderSuccess.orderId,
+            total: createdOrder.total,
+            sellerId: createdOrder.items[0]?.seller?.toString() || '', // Assuming at least one item per order
+            data: {
+              productName: createdOrder.items[0]?.name || 'Product',
+              quantity: createdOrder.items[0]?.quantity || 1,
+              totalAmount: createdOrder.total,
+            },
+          }).catch(error => console.error(`Failed to emit OrderPlaced event for order ${orderSuccess.orderId}:`, error));
+        });
 
         return {
-          orderId,
-          order: createdOrder,
-          message: 'Order created successfully. Please proceed with payment.',
+          orders: ordersCreated,
+          message: `${ordersCreated.length} orders created successfully. Please proceed with payment.`,
         };
       } catch (error: unknown) {
         await session.abortTransaction();
@@ -470,10 +539,10 @@ export const checkoutPipeline = (
   shippingAddress: string,
   selectedItemIds?: string[],
   isDirectCheckout?: boolean
-): ResultAsync<PaymentSuccess, PaymentError> => {
+): ResultAsync<MultiOrderPaymentSuccess, PaymentError> => {
   if (isDirectCheckout) {
     return validateItems(userId, paymentMethod, shippingAddress, selectedItemIds)
-    .andThen(createOrder);
+      .andThen(createOrder);
   }
   return validateCart(userId, paymentMethod, shippingAddress, selectedItemIds)
     .andThen(createOrder);
