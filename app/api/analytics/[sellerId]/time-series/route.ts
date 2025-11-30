@@ -77,7 +77,7 @@ export async function GET(
   // For specific period analysis, return aggregated stats
   if (date && granularity !== 'all') {
     const { calculateStatistics, serializeStats } = await import('@/lib/analytics/service');
-    const stats = calculateStatistics(orders);
+    const stats = calculateStatistics(orders, sellerObjectId);
     const serialized = serializeStats(stats);
 
     return NextResponse.json({
@@ -91,7 +91,7 @@ export async function GET(
   }
 
   // For time-series analysis, return daily/monthly metrics
-  const metrics = calculateTimeSeriesMetrics(orders as any);
+  const metrics = calculateTimeSeriesMetrics(orders as any, sellerObjectId);
 
   return NextResponse.json({
     success: true,

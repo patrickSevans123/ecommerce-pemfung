@@ -20,6 +20,7 @@ import {
   DailyDataPoint,
   MonthlyDataPoint
 } from './types';
+import mongoose from 'mongoose';
 
 // Ord instances for sorting
 const byRevenueDesc: Ord.Ord<ProductStats> = pipe(
@@ -43,34 +44,48 @@ const byDiscountDesc: Ord.Ord<PromoCodeStats> = pipe(
 const getOrderStatus = (order: OrderDocument): string =>
   typeof order.status === 'object' && 'status' in order.status 
     ? order.status.status 
-    : 'pending';
+    : order.status || 'pending';
 
-// Pure function to calculate order total
-const getOrderTotal = (order: OrderDocument): number =>
-  order.items.reduce((acc: number, item) => acc + item.price * item.quantity, 0);
+const isOrderCompleted = (order: OrderDocument) => {
+  const s = getOrderStatus(order);
+  return s === 'delivered' || s === 'completed';
+};
+
+// Helper to get items for a specific seller
+const itemsForSeller = (order: OrderDocument, sellerIdStr: string) => (
+  order.items.filter(item => (item.seller ? item.seller.toString() : '') === sellerIdStr)
+);
+
+// Pure function to calculate seller-specific order total (only items from the seller)
+const getSellerOrderTotal = (order: OrderDocument, sellerIdStr: string): number =>
+  itemsForSeller(order, sellerIdStr).reduce((acc: number, item) => acc + item.price * item.quantity, 0);
 
 // === OVERVIEW ANALYTICS ===
-export const calculateOverviewAnalytics = (orders: OrderDocument[]): OverviewAnalytics => {
+export const calculateOverviewAnalytics = (orders: OrderDocument[], sellerObjectId: mongoose.Types.ObjectId): OverviewAnalytics => {
+  const sellerIdStr = sellerObjectId.toString();
+
+  const filtered = orders.filter(o => isOrderCompleted(o) && getSellerOrderTotal(o, sellerIdStr) > 0);
+
   const totalSales = pipe(
-    orders,
-    A.map(getOrderTotal),
+    filtered,
+    A.map(o => getSellerOrderTotal(o, sellerIdStr)),
     A.reduce(0, (acc, val) => acc + val)
   );
-  
-  const orderCount = orders.length;
-  
-  const totalRevenue = pipe(
-    orders,
-    A.map(order => order.total),
-    A.reduce(0, (acc, val) => acc + val)
-  );
-  
+
+  const orderCount = filtered.length;
+
+  const totalRevenue = totalSales; // shipping excluded, discounts handled proportionally elsewhere if needed
+
   const totalDiscount = pipe(
-    orders,
-    A.map(order => order.discount || 0),
+    filtered,
+    A.map(o => {
+      const sellerSubtotal = getSellerOrderTotal(o, sellerIdStr);
+      const orderSubtotal = o.subtotal || 0;
+      return o.discount && orderSubtotal > 0 ? (o.discount * (sellerSubtotal / orderSubtotal)) : 0;
+    }),
     A.reduce(0, (acc, val) => acc + val)
   );
-  
+
   return {
     totalSales,
     orderCount,
@@ -81,16 +96,18 @@ export const calculateOverviewAnalytics = (orders: OrderDocument[]): OverviewAna
 };
 
 // === PRODUCT ANALYTICS ===
-export const calculateProductMetrics = (orders: OrderDocument[]): ProductMetrics => {
+export const calculateProductMetrics = (orders: OrderDocument[], sellerObjectId: mongoose.Types.ObjectId): ProductMetrics => {
+  const sellerIdStr = sellerObjectId.toString();
   const productMap = new Map<string, ProductStats>();
   let totalQuantity = 0;
-  
-  orders.forEach(order => {
-    order.items.forEach(item => {
+
+  const filtered = orders.filter(o => isOrderCompleted(o));
+
+  filtered.forEach(order => {
+    itemsForSeller(order, sellerIdStr).forEach(item => {
       totalQuantity += item.quantity;
       const productId = item.product.toString();
       const existing = productMap.get(productId);
-      
       if (existing) {
         productMap.set(productId, {
           ...existing,
@@ -107,36 +124,40 @@ export const calculateProductMetrics = (orders: OrderDocument[]): ProductMetrics
       }
     });
   });
-  
+
   const topProducts = pipe(
     Array.from(productMap.values()),
     A.sort(byRevenueDesc),
     A.takeLeft(10)
   );
-  
+
   return {
     totalProductsSold: totalQuantity,
     uniqueProductsSold: productMap.size,
     topProducts,
-    averageProductsPerOrder: orders.length > 0 ? totalQuantity / orders.length : 0,
+    averageProductsPerOrder: filtered.length > 0 ? totalQuantity / filtered.length : 0,
   };
 };
 
 // === ORDER ANALYTICS ===
-export const calculateOrderMetrics = (orders: OrderDocument[]): OrderMetrics => {
+export const calculateOrderMetrics = (orders: OrderDocument[], sellerObjectId: mongoose.Types.ObjectId): OrderMetrics => {
+  const sellerIdStr = sellerObjectId.toString();
+  // Consider only completed orders that include seller items
+  const filtered = orders.filter(o => isOrderCompleted(o) && getSellerOrderTotal(o, sellerIdStr) > 0);
+
   const statusCounts = pipe(
-    orders,
+    filtered,
     A.map(getOrderStatus),
     A.reduce({ pending: 0, paid: 0, shipped: 0, delivered: 0, cancelled: 0 }, (acc, status) => ({
       ...acc,
       [status]: (acc[status as keyof typeof acc] || 0) + 1,
     }))
   );
-  
-  const totalOrders = orders.length;
+
+  const totalOrders = filtered.length;
   const completedOrders = statusCounts.delivered + statusCounts.paid;
   const cancelledOrders = statusCounts.cancelled;
-  
+
   return {
     totalOrders,
     ordersByStatus: statusCounts,
@@ -146,69 +167,83 @@ export const calculateOrderMetrics = (orders: OrderDocument[]): OrderMetrics => 
 };
 
 // === CUSTOMER ANALYTICS ===
-export const calculateCustomerMetrics = (orders: OrderDocument[]): CustomerMetrics => {
+export const calculateCustomerMetrics = (orders: OrderDocument[], sellerObjectId: mongoose.Types.ObjectId): CustomerMetrics => {
+  const sellerIdStr = sellerObjectId.toString();
+
+  const filtered = orders.filter(o => isOrderCompleted(o) && getSellerOrderTotal(o, sellerIdStr) > 0);
+
   const customerOrders = new Map<string, number>();
-  
-  orders.forEach(order => {
+
+  filtered.forEach(order => {
     if (order.user) {
       const userId = order.user.toString();
       customerOrders.set(userId, (customerOrders.get(userId) || 0) + 1);
     }
   });
-  
+
   const uniqueCustomers = customerOrders.size;
   const repeatCustomers = pipe(
     Array.from(customerOrders.values()),
     A.filter(count => count > 1),
     arr => arr.length
   );
-  
+
   const totalRevenue = pipe(
-    orders,
-    A.map(order => order.total),
+    filtered,
+    A.map(order => {
+      const sellerSubtotal = getSellerOrderTotal(order, sellerIdStr);
+      const orderSubtotal = order.subtotal || 0;
+      const sellerDiscount = order.discount && orderSubtotal > 0 ? (order.discount * (sellerSubtotal / orderSubtotal)) : 0;
+      return sellerSubtotal - sellerDiscount;
+    }),
     A.reduce(0, (acc, val) => acc + val)
   );
-  
+
   return {
     uniqueCustomers,
     repeatCustomers,
     repeatCustomerRate: uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers) * 100 : 0,
-    averageOrdersPerCustomer: uniqueCustomers > 0 ? orders.length / uniqueCustomers : 0,
+    averageOrdersPerCustomer: uniqueCustomers > 0 ? filtered.length / uniqueCustomers : 0,
     customerLifetimeValue: uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0,
   };
 };
 
 // === REVENUE ANALYTICS ===
-export const calculateRevenueMetrics = (orders: OrderDocument[]): RevenueMetrics => {
+export const calculateRevenueMetrics = (orders: OrderDocument[], sellerObjectId: mongoose.Types.ObjectId): RevenueMetrics => {
+  const sellerIdStr = sellerObjectId.toString();
   const revenueByHourMap = new Map<number, { revenue: number; count: number }>();
-  
+
   let totalRevenue = 0;
   let totalSubtotal = 0;
-  let totalShipping = 0;
+  let totalShipping = 0; // will remain 0 because we exclude shipping
   let totalDiscount = 0;
-  
-  orders.forEach(order => {
-    totalRevenue += order.total;
-    totalSubtotal += order.subtotal;
-    totalShipping += order.shipping || 0;
-    totalDiscount += order.discount || 0;
-    
+
+  const filtered = orders.filter(o => isOrderCompleted(o) && getSellerOrderTotal(o, sellerIdStr) > 0);
+
+  filtered.forEach(order => {
+    const sellerSubtotal = getSellerOrderTotal(order, sellerIdStr);
+    const orderSubtotal = order.subtotal || 0;
+    const sellerDiscount = order.discount && orderSubtotal > 0 ? (order.discount * (sellerSubtotal / orderSubtotal)) : 0;
+
+    totalRevenue += (sellerSubtotal - (sellerDiscount || 0));
+    totalSubtotal += sellerSubtotal;
+    totalDiscount += sellerDiscount || 0;
+
     const hour = order.createdAt ? order.createdAt.getHours() : 0;
     const existing = revenueByHourMap.get(hour);
-    
     if (existing) {
       revenueByHourMap.set(hour, {
-        revenue: existing.revenue + order.total,
+        revenue: existing.revenue + (sellerSubtotal - (sellerDiscount || 0)),
         count: existing.count + 1,
       });
     } else {
       revenueByHourMap.set(hour, {
-        revenue: order.total,
+        revenue: (sellerSubtotal - (sellerDiscount || 0)),
         count: 1,
       });
     }
   });
-  
+
   const revenueByHour = pipe(
     Array.from(revenueByHourMap.entries()),
     A.map(([hour, data]) => ({
@@ -218,7 +253,7 @@ export const calculateRevenueMetrics = (orders: OrderDocument[]): RevenueMetrics
     })),
     A.sort(byHourAsc)
   );
-  
+
   return {
     totalRevenue,
     totalSubtotal,
@@ -230,34 +265,40 @@ export const calculateRevenueMetrics = (orders: OrderDocument[]): RevenueMetrics
 };
 
 // === PROMO CODE ANALYTICS ===
-export const calculatePromoCodeMetrics = (orders: OrderDocument[]): PromoCodeMetrics => {
+export const calculatePromoCodeMetrics = (orders: OrderDocument[], sellerObjectId: mongoose.Types.ObjectId): PromoCodeMetrics => {
+  const sellerIdStr = sellerObjectId.toString();
   const promoMap = new Map<string, { count: number; discount: number }>();
-  
-  orders.forEach(order => {
+
+  const filtered = orders.filter(o => isOrderCompleted(o) && getSellerOrderTotal(o, sellerIdStr) > 0);
+
+  filtered.forEach(order => {
     if (order.promoCodeApplied && order.discount) {
+      const sellerSubtotal = getSellerOrderTotal(order, sellerIdStr);
+      const orderSubtotal = order.subtotal || 0;
+      const sellerDiscount = order.discount && orderSubtotal > 0 ? (order.discount * (sellerSubtotal / orderSubtotal)) : 0;
+
       const existing = promoMap.get(order.promoCodeApplied);
-      
       if (existing) {
         promoMap.set(order.promoCodeApplied, {
           count: existing.count + 1,
-          discount: existing.discount + order.discount,
+          discount: existing.discount + sellerDiscount,
         });
       } else {
         promoMap.set(order.promoCodeApplied, {
           count: 1,
-          discount: order.discount,
+          discount: sellerDiscount,
         });
       }
     }
   });
-  
+
   const totalPromoCodesUsed = promoMap.size;
   const totalPromoDiscount = pipe(
     Array.from(promoMap.values()),
     A.map(p => p.discount),
     A.reduce(0, (acc, val) => acc + val)
   );
-  
+
   const topPromoCodes = pipe(
     Array.from(promoMap.entries()),
     A.map(([code, data]) => ({
@@ -268,15 +309,15 @@ export const calculatePromoCodeMetrics = (orders: OrderDocument[]): PromoCodeMet
     A.sort(byDiscountDesc),
     A.takeLeft(10)
   );
-  
-  const ordersWithPromo = orders.filter(o => o.promoCodeApplied).length;
-  
+
+  const ordersWithPromo = filtered.filter(o => o.promoCodeApplied).length;
+
   return {
     totalPromoCodesUsed,
     totalPromoDiscount,
     averageDiscountPerPromo: totalPromoCodesUsed > 0 ? totalPromoDiscount / totalPromoCodesUsed : 0,
     topPromoCodes,
-    promoEffectivenessRate: orders.length > 0 ? (ordersWithPromo / orders.length) * 100 : 0,
+    promoEffectivenessRate: filtered.length > 0 ? (ordersWithPromo / filtered.length) * 100 : 0,
   };
 };
 
@@ -297,10 +338,21 @@ const groupOrdersByDateKey = (orders: OrderDocument[], keyFn: (date: Date) => st
   );
 
 // Calculate daily metrics from grouped orders
-const calculateDailyMetrics = (dateKey: string, orders: OrderDocument[]): DailyDataPoint => {
-  const revenue = orders.reduce((sum, o) => sum + o.total, 0);
+const calculateDailyMetrics = (dateKey: string, orders: OrderDocument[], sellerIdStr?: string): DailyDataPoint => {
+  let revenue = 0;
   const orderCount = orders.length;
-  
+
+  if (sellerIdStr) {
+    revenue = orders.reduce((sum, o) => {
+      const sellerSubtotal = getSellerOrderTotal(o, sellerIdStr);
+      const orderSubtotal = o.subtotal || 0;
+      const sellerDiscount = o.discount && orderSubtotal > 0 ? (o.discount * (sellerSubtotal / orderSubtotal)) : 0;
+      return sum + (sellerSubtotal - (sellerDiscount || 0));
+    }, 0);
+  } else {
+    revenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+  }
+
   return {
     date: dateKey,
     orderCount,
@@ -310,10 +362,21 @@ const calculateDailyMetrics = (dateKey: string, orders: OrderDocument[]): DailyD
 };
 
 // Calculate monthly metrics from grouped orders
-const calculateMonthlyMetrics = (monthKey: string, orders: OrderDocument[]): MonthlyDataPoint => {
-  const revenue = orders.reduce((sum, o) => sum + o.total, 0);
+const calculateMonthlyMetrics = (monthKey: string, orders: OrderDocument[], sellerIdStr?: string): MonthlyDataPoint => {
+  let revenue = 0;
   const orderCount = orders.length;
-  
+
+  if (sellerIdStr) {
+    revenue = orders.reduce((sum, o) => {
+      const sellerSubtotal = getSellerOrderTotal(o, sellerIdStr);
+      const orderSubtotal = o.subtotal || 0;
+      const sellerDiscount = o.discount && orderSubtotal > 0 ? (o.discount * (sellerSubtotal / orderSubtotal)) : 0;
+      return sum + (sellerSubtotal - (sellerDiscount || 0));
+    }, 0);
+  } else {
+    revenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+  }
+
   return {
     month: monthKey,
     orderCount,
@@ -326,21 +389,24 @@ const calculateMonthlyMetrics = (monthKey: string, orders: OrderDocument[]): Mon
  * Calculate time-series metrics for line charts
  * Pure function using fp-ts for data aggregation by time periods
  */
-export const calculateTimeSeriesMetrics = (orders: OrderDocument[]): TimeSeriesMetrics => {
+export const calculateTimeSeriesMetrics = (orders: OrderDocument[], sellerObjectId?: mongoose.Types.ObjectId): TimeSeriesMetrics => {
+  const sellerIdStr = sellerObjectId ? sellerObjectId.toString() : null;
+  const filtered = sellerIdStr ? orders.filter(o => isOrderCompleted(o) && getSellerOrderTotal(o, sellerIdStr) > 0) : orders.filter(o => isOrderCompleted(o));
+
   // Group by day (YYYY-MM-DD)
-  const ordersByDay = groupOrdersByDateKey(orders, (date) => 
+  const ordersByDay = groupOrdersByDateKey(filtered, (date) => 
     format(startOfDay(date), 'yyyy-MM-dd')
   );
   
   // Group by month (YYYY-MM)
-  const ordersByMonth = groupOrdersByDateKey(orders, (date) => 
+  const ordersByMonth = groupOrdersByDateKey(filtered, (date) => 
     format(startOfMonth(date), 'yyyy-MM')
   );
   
   // Convert to daily data points
   const daily = pipe(
     Object.entries(ordersByDay),
-    A.map(([dateKey, ordersInDay]) => calculateDailyMetrics(dateKey, ordersInDay)),
+    A.map(([dateKey, ordersInDay]) => calculateDailyMetrics(dateKey, ordersInDay, sellerIdStr ?? undefined)),
     A.sort(pipe(
       byDateAsc,
       Ord.contramap((point: DailyDataPoint) => point.date)
@@ -350,7 +416,7 @@ export const calculateTimeSeriesMetrics = (orders: OrderDocument[]): TimeSeriesM
   // Convert to monthly data points
   const monthly = pipe(
     Object.entries(ordersByMonth),
-    A.map(([monthKey, ordersInMonth]) => calculateMonthlyMetrics(monthKey, ordersInMonth)),
+    A.map(([monthKey, ordersInMonth]) => calculateMonthlyMetrics(monthKey, ordersInMonth, sellerIdStr ?? undefined)),
     A.sort(pipe(
       byDateAsc,
       Ord.contramap((point: MonthlyDataPoint) => point.month)

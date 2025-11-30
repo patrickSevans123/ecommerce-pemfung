@@ -2,24 +2,101 @@ import { OrderDocument } from '@/lib/db/models/order';
 import { SalesStatistics, ProductStats, PromoCodeStats, CategoryStats, RevenueByHour } from './types';
 import { foldMap } from 'fp-ts/Array';
 import { monoidSalesStatistics } from './monoid';
+import mongoose from 'mongoose';
 
-export const orderToStats = (order: OrderDocument): SalesStatistics => {
-  const totalSales = order.items.reduce((acc: number, item) => acc + item.price * item.quantity, 0);
-  
-  // Extract order status
-  const statusValue = typeof order.status === 'object' && 'status' in order.status 
-    ? order.status.status 
-    : 'pending';
-  
-  // Calculate product metrics
+// Helper to determine if an order is completed/delivered
+const isOrderCompleted = (order: OrderDocument) => {
+  const statusValue = typeof order.status === 'object' && 'status' in order.status ? order.status.status : order.status;
+  return statusValue === 'delivered';
+};
+
+/**
+ * Convert a single order into SalesStatistics but scoped to a specific seller.
+ * Only items that belong to the seller are counted. Shipping (delivery) fees are excluded.
+ * Discounts are allocated proportionally to the seller's share of the order subtotal.
+ */
+export const orderToStats = (sellerObjectId: mongoose.Types.ObjectId) => (order: OrderDocument): SalesStatistics => {
+  // Only include completed orders
+  if (!isOrderCompleted(order)) {
+    // return empty stats
+    return {
+      totalSales: 0,
+      orderCount: 0,
+      averageOrderValue: 0,
+
+      totalRevenue: 0,
+      totalSubtotal: 0,
+      totalShipping: 0,
+      totalDiscount: 0,
+
+      pendingOrders: 0,
+      paidOrders: 0,
+      shippedOrders: 0,
+      deliveredOrders: 0,
+      cancelledOrders: 0,
+
+      totalProductsSold: 0,
+      uniqueProductsSold: new Set(),
+      topProducts: [],
+
+      promoCodesUsed: 0,
+      totalPromoDiscount: 0,
+      topPromoCodes: [],
+
+      uniqueCustomers: new Set(),
+
+      categorySales: [],
+
+      revenueByHour: new Map<number, RevenueByHour>(),
+    };
+  }
+
+  // Compute seller-specific subtotal (sum of items belonging to seller)
+  const sellerIdStr = sellerObjectId.toString();
+  const sellerItems = order.items.filter(item => (item.seller ? item.seller.toString() : '') === sellerIdStr);
+  const sellerSubtotal = sellerItems.reduce((acc: number, item) => acc + item.price * item.quantity, 0);
+
+  // If seller has no items in this order, return empty stats
+  if (sellerSubtotal === 0) {
+    return {
+      totalSales: 0,
+      orderCount: 0,
+      averageOrderValue: 0,
+
+      totalRevenue: 0,
+      totalSubtotal: 0,
+      totalShipping: 0,
+      totalDiscount: 0,
+
+      pendingOrders: 0,
+      paidOrders: 0,
+      shippedOrders: 0,
+      deliveredOrders: 0,
+      cancelledOrders: 0,
+
+      totalProductsSold: 0,
+      uniqueProductsSold: new Set(),
+      topProducts: [],
+
+      promoCodesUsed: 0,
+      totalPromoDiscount: 0,
+      topPromoCodes: [],
+
+      uniqueCustomers: new Set(),
+
+      categorySales: [],
+
+      revenueByHour: new Map<number, RevenueByHour>(),
+    };
+  }
+
+  // Calculate product metrics only for seller items
   const productMap = new Map<string, ProductStats>();
   let totalQuantity = 0;
-  
-  order.items.forEach(item => {
+  sellerItems.forEach(item => {
     totalQuantity += item.quantity;
     const productId = item.product.toString();
     const existing = productMap.get(productId);
-    
     if (existing) {
       productMap.set(productId, {
         ...existing,
@@ -35,71 +112,73 @@ export const orderToStats = (order: OrderDocument): SalesStatistics => {
       });
     }
   });
-  
-  // Promo code stats
-  const promoStats: PromoCodeStats[] = order.promoCodeApplied && order.discount ? [{
+
+  // Allocate discount proportionally to seller's subtotal
+  const orderSubtotal = order.subtotal || 0;
+  const sellerDiscount = order.discount && orderSubtotal > 0 ? (order.discount * (sellerSubtotal / orderSubtotal)) : 0;
+
+  // Revenue excludes shipping (delivery) fees
+  const sellerTotalRevenue = sellerSubtotal - (sellerDiscount || 0);
+
+  // Promo code stats (seller share)
+  const promoStats: PromoCodeStats[] = order.promoCodeApplied && sellerDiscount ? [{
     code: order.promoCodeApplied,
     usageCount: 1,
-    totalDiscount: order.discount,
+    totalDiscount: sellerDiscount,
   }] : [];
-  
-  // Revenue by hour
+
+  // Revenue by hour (use seller total revenue)
   const hour = order.createdAt ? order.createdAt.getHours() : 0;
   const revenueByHour = new Map<number, RevenueByHour>();
   revenueByHour.set(hour, {
     hour,
-    revenue: order.total,
+    revenue: sellerTotalRevenue,
     orderCount: 1,
   });
-  
+
   // Customer set
   const customers = new Set<string>();
   if (order.user) {
     customers.add(order.user.toString());
   }
-  
+
+  // Extract order status counts (only completed counted above as delivered)
+  const statusValue = typeof order.status === 'object' && 'status' in order.status ? order.status.status : order.status;
+
   return {
-    // Basic metrics
-    totalSales,
+    totalSales: sellerSubtotal,
     orderCount: 1,
-    averageOrderValue: totalSales,
-    
-    // Revenue breakdown
-    totalRevenue: order.total,
-    totalSubtotal: order.subtotal,
-    totalShipping: order.shipping || 0,
-    totalDiscount: order.discount || 0,
-    
-    // Order status
+    averageOrderValue: sellerSubtotal,
+
+    totalRevenue: sellerTotalRevenue,
+    totalSubtotal: sellerSubtotal,
+    totalShipping: 0, // exclude shipping from seller revenue
+    totalDiscount: sellerDiscount,
+
     pendingOrders: statusValue === 'pending' ? 1 : 0,
     paidOrders: statusValue === 'paid' ? 1 : 0,
     shippedOrders: statusValue === 'shipped' ? 1 : 0,
     deliveredOrders: statusValue === 'delivered' ? 1 : 0,
     cancelledOrders: statusValue === 'cancelled' ? 1 : 0,
-    
-    // Product metrics
+
     totalProductsSold: totalQuantity,
     uniqueProductsSold: new Set(productMap.keys()),
     topProducts: Array.from(productMap.values()),
-    
-    // Promo code effectiveness
+
     promoCodesUsed: promoStats.length,
-    totalPromoDiscount: order.discount || 0,
+    totalPromoDiscount: sellerDiscount,
     topPromoCodes: promoStats,
-    
-    // Customer insights
+
     uniqueCustomers: customers,
-    
-    // Category performance (empty for now, needs Product lookup)
+
     categorySales: [],
-    
-    // Time-based
+
     revenueByHour,
   };
 };
 
-export const calculateStatistics = (orders: OrderDocument[]): SalesStatistics =>
-  foldMap(monoidSalesStatistics)(orderToStats)(orders);
+export const calculateStatistics = (orders: OrderDocument[], sellerObjectId: mongoose.Types.ObjectId): SalesStatistics =>
+  foldMap(monoidSalesStatistics)(orderToStats(sellerObjectId))(orders);
 
 // Helper to serialize SalesStatistics for JSON response
 export const serializeStats = (stats: SalesStatistics) => ({

@@ -175,8 +175,8 @@ export default function SellerDashboard() {
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/seller/products">View Products</Link>
               </Button>
-              <Button className="w-full" variant="outline" disabled>
-                View Analytics
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/seller/dashboard/analytics">View Analytics</Link>
               </Button>
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/seller/orders">Manage Orders</Link>
@@ -209,31 +209,7 @@ export default function SellerDashboard() {
           </Card>
         </div>
 
-        {/* Features Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Features</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              You now have access to:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-600 mb-6">
-              <li>✅ Product management (create, edit, delete)</li>
-            </ul>
-            <p className="text-gray-600 mb-2">
-              Coming soon:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-600">
-              <li>Order management for your products</li>
-              <li>Advanced sales analytics dashboard</li>
-              <li>Revenue tracking and reporting</li>
-              <li>Customer insights</li>
-              <li>Promo code management</li>
-              <li>Inventory management</li>
-            </ul>
-          </CardContent>
-        </Card>
+        {/* Features Section removed per request */}
       </main>
     </div>
   );

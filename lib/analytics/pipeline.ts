@@ -100,7 +100,7 @@ export const calculateAnalytics = (
 ): ResultAsync<CalculatedStatsContext, AnalyticsError> => {
   return ResultAsync.fromPromise(
     (async () => {
-      const stats = calculateStatistics(context.orders);
+      const stats = calculateStatistics(context.orders, context.sellerObjectId);
 
       return {
         ...context,
@@ -166,7 +166,7 @@ export const overviewAnalyticsPipeline = (
 ): ResultAsync<OverviewAnalytics, AnalyticsError> => {
   return validateSellerId(sellerId)
     .andThen(fetchOrdersForSeller)
-    .map((context) => calculateOverviewAnalytics(context.orders))
+    .map((context) => calculateOverviewAnalytics(context.orders, context.sellerObjectId))
     .mapErr((error) => {
       if (error.code === 'CALCULATION_ERROR') return error;
       return error;
@@ -182,7 +182,7 @@ export const revenueAnalyticsPipeline = (
 ): ResultAsync<RevenueMetrics, AnalyticsError> => {
   return validateSellerId(sellerId)
     .andThen(fetchOrdersForSeller)
-    .map((context) => calculateRevenueMetrics(context.orders))
+    .map((context) => calculateRevenueMetrics(context.orders, context.sellerObjectId))
     .mapErr((error) => {
       if (error.code === 'CALCULATION_ERROR') return error;
       return error;
@@ -198,7 +198,7 @@ export const productAnalyticsPipeline = (
 ): ResultAsync<ProductMetrics, AnalyticsError> => {
   return validateSellerId(sellerId)
     .andThen(fetchOrdersForSeller)
-    .map((context) => calculateProductMetrics(context.orders))
+    .map((context) => calculateProductMetrics(context.orders, context.sellerObjectId))
     .mapErr((error) => {
       if (error.code === 'CALCULATION_ERROR') return error;
       return error;
@@ -214,7 +214,7 @@ export const orderAnalyticsPipeline = (
 ): ResultAsync<OrderMetrics, AnalyticsError> => {
   return validateSellerId(sellerId)
     .andThen(fetchOrdersForSeller)
-    .map((context) => calculateOrderMetrics(context.orders))
+    .map((context) => calculateOrderMetrics(context.orders, context.sellerObjectId))
     .mapErr((error) => {
       if (error.code === 'CALCULATION_ERROR') return error;
       return error;
@@ -230,7 +230,7 @@ export const customerAnalyticsPipeline = (
 ): ResultAsync<CustomerMetrics, AnalyticsError> => {
   return validateSellerId(sellerId)
     .andThen(fetchOrdersForSeller)
-    .map((context) => calculateCustomerMetrics(context.orders))
+    .map((context) => calculateCustomerMetrics(context.orders, context.sellerObjectId))
     .mapErr((error) => {
       if (error.code === 'CALCULATION_ERROR') return error;
       return error;
@@ -246,7 +246,7 @@ export const promoCodeAnalyticsPipeline = (
 ): ResultAsync<PromoCodeMetrics, AnalyticsError> => {
   return validateSellerId(sellerId)
     .andThen(fetchOrdersForSeller)
-    .map((context) => calculatePromoCodeMetrics(context.orders))
+    .map((context) => calculatePromoCodeMetrics(context.orders, context.sellerObjectId))
     .mapErr((error) => {
       if (error.code === 'CALCULATION_ERROR') return error;
       return error;

@@ -28,6 +28,9 @@ export default function SellerNavbar() {
             <Link href="/seller/orders" className="text-sm text-gray-600 hover:text-gray-900">
               Orders
             </Link>
+            <Link href="/seller/dashboard/analytics" className="text-sm text-gray-600 hover:text-gray-900">
+              Analytics
+            </Link>
             <Link href="/seller/products" className="text-sm text-gray-600 hover:text-gray-900">
               Products
             </Link>

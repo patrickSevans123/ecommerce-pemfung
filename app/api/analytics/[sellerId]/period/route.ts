@@ -50,7 +50,7 @@ export async function GET(
     return NextResponse.json({ message: 'No orders found for this period' }, { status: 404 });
   }
 
-  const stats = calculateStatistics(orders);
+  const stats = calculateStatistics(orders, sellerObjectId);
   const serialized = serializeStats(stats);
 
   return NextResponse.json({

@@ -10,7 +10,7 @@ export async function GET(
   const result = await overviewAnalyticsPipeline(sellerId);
 
   return result.match(
-    (data) => NextResponse.json(data),
+    (data) => NextResponse.json({ data }),
     (error) => {
       const status = 
         error.code === 'INVALID_SELLER_ID' ? 400 :
