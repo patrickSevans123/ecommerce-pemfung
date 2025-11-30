@@ -6,6 +6,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
 import { productsAPI, cartAPI } from '@/utils/api';
+import { reviewsAPI } from '@/utils/api/reviews';
+import ReviewForm from '@/components/review/ReviewForm';
+import ReviewList from '@/components/review/ReviewList';
+import { Review } from '@/types/review';
 import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';
@@ -28,6 +32,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [productId, setProductId] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsStats, setReviewsStats] = useState<{ count: number; average: number } | null>(null);
 
   useEffect(() => {
     params.then(({ id }) => {
@@ -42,10 +48,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       setIsLoading(true);
       const data = await productsAPI.getById(id);
       setProduct(data);
+      // fetch reviews for product
+      fetchReviews(id);
     } catch (error) {
       console.error('Error fetching product:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchReviews = async (id: string) => {
+    try {
+      const res = await reviewsAPI.getByProduct(id);
+      setReviews(res.reviews);
+      setReviewsStats({ count: res.stats.count, average: res.stats.average });
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+      setReviews([]);
+      setReviewsStats(null);
     }
   };
 
@@ -398,6 +418,40 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <Button variant="ghost" asChild className="w-full">
               <Link href="/products">← Back to All Products</Link>
             </Button>
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Reviews List - Takes up 2 columns */}
+            <div className="lg:col-span-2">
+              <ReviewList reviews={reviews} stats={reviewsStats} />
+            </div>
+
+            {/* Review Form - Takes up 1 column */}
+            <div className="lg:border-l lg:pl-8">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                Write a Review
+              </h3>
+              {isAuthenticated && user?.role === 'buyer' ? (
+                <ReviewForm
+                  productId={product._id}
+                  onCreated={(r) => {
+                    setReviews((prev) => [r, ...prev]);
+                    if (productId) fetchReviews(productId);
+                  }}
+                />
+              ) : (
+                <div className="py-6 text-center border border-gray-200 rounded-lg">
+                  <p className="text-gray-600 text-sm">
+                    {isAuthenticated && user?.role === 'seller'
+                      ? 'Only buyers can submit reviews.'
+                      : 'Log in as a buyer to submit a review.'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>
