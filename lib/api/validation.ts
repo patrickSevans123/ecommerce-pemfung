@@ -55,8 +55,8 @@ export const validateSchema = <T>(
     // Log Zod validation details for debugging (will still return sanitized response)
     try {
       console.error('validateSchema: Zod validation failed', parsed.error.format());
-    } catch (e) {
-      console.error('validateSchema: Zod validation failed (could not format)', parsed.error);
+    } catch (formatErr) {
+      console.error('validateSchema: Zod validation failed (could not format)', parsed.error, formatErr);
     }
 
     return {

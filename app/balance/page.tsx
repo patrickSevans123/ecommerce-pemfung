@@ -10,7 +10,6 @@ import Navbar from '@/components/navbar';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader } from '@/components/loader';
-import { Label } from '@/components/ui/label';
 
 type Event = {
   _id?: string;
@@ -22,7 +21,7 @@ type Event = {
 
 export default function BalancePage() {
   const { isLoading: authLoading, user } = useProtectedRoute(['buyer', 'seller']);
-  const { logout } = useAuthStore();
+  useAuthStore();
 
   const [events, setEvents] = useState<Event[]>([]);
   const [balance, setBalance] = useState<number | null>(null);
@@ -84,9 +83,18 @@ export default function BalancePage() {
       setDepositAmount('');
       setWithdrawAmount('');
       await fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating event', err);
-      setErrors([err?.response?.data?.error || err?.message || 'Failed to create event']);
+      let errorMessage = 'Failed to create event';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        const maybe = err as { response?: { data?: { error?: string } } };
+        if (maybe.response?.data?.error) {
+          errorMessage = maybe.response.data.error;
+        }
+      }
+      setErrors([errorMessage]);
     } finally {
       setIsSubmitting(false);
     }

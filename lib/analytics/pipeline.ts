@@ -1,8 +1,7 @@
 // Railway Oriented Programming pipelines for analytics
-import { ResultAsync, okAsync } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
 import mongoose from 'mongoose';
 import Order from '@/lib/db/models/order';
-import { OrderDocument } from '@/lib/db/models/order';
 import {
   AnalyticsError,
   invalidSellerIdError,
@@ -16,7 +15,6 @@ import {
   OrdersContext,
   CalculatedStatsContext,
   SerializedAnalyticsResult,
-  SalesStatistics,
   OverviewAnalytics,
   RevenueMetrics,
   ProductMetrics,

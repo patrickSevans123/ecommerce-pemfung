@@ -1,5 +1,5 @@
 import { OrderDocument } from '@/lib/db/models/order';
-import { SalesStatistics, ProductStats, PromoCodeStats, CategoryStats, RevenueByHour } from './types';
+import { SalesStatistics, ProductStats, PromoCodeStats, RevenueByHour } from './types';
 import { foldMap } from 'fp-ts/Array';
 import { monoidSalesStatistics } from './monoid';
 import mongoose from 'mongoose';

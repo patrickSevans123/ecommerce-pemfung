@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useRef, useState } from "react"
+import { useRef, useState, useId } from "react"
 
 type Point = { date: string; revenue: number; orderCount?: number }
 
@@ -23,6 +23,7 @@ export default function SimpleChart({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
+  const id = useId()
 
   if (!data || !data.length) return <div className="text-sm text-slate-600">No data to display</div>
 
@@ -42,7 +43,7 @@ export default function SimpleChart({
 
   const points = data.map((d, i) => ({ x: padding + i * stepX, y: yFor(d.revenue) }))
 
-  const gradientId = `gradient-${Math.random().toString(36).slice(2, 9)}`
+  const gradientId = `gradient-${id}`
   const pathData =
     type === "line"
       ? `M ${points.map((p) => `${p.x},${p.y}`).join(" L ")} L ${points[points.length - 1].x},${height - padding} L ${padding},${height - padding} Z`

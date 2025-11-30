@@ -11,7 +11,15 @@ export interface Notification {
   sellerId?: string;
   productId?: string;
   orderId?: string;
-  data: Record<string, any>;
+  data: {
+    productName?: string;
+    quantity?: number;
+    amount?: number;
+    trackingNumber?: string;
+    currentStock?: number;
+    orderId?: string;
+    reason?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

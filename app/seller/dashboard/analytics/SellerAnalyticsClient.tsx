@@ -21,13 +21,16 @@ type OverviewResult = {
     totalDiscount: number
   }
 }
+
+type ProductTop = { productId: string; productName: string; quantitySold: number; revenue: number }
 type ProductsResult = {
   data: {
     totalProductsSold: number
     uniqueProductsSold: number
-    topProducts: { productId: string; productName: string; quantitySold: number; revenue: number }[]
+    topProducts: ProductTop[]
   }
 }
+
 type CustomersResult = {
   data: {
     uniqueCustomers: number
@@ -36,7 +39,11 @@ type CustomersResult = {
     averageOrdersPerCustomer: number
   }
 }
-type TimeSeriesResult = { success?: boolean; data?: { daily?: { date: string; revenue: number }[]; monthly?: any[] } }
+
+type TimeSeriesDaily = { date: string; revenue: number }
+type TimeSeriesMonthly = { month: string; revenue?: number; total?: number }
+type TimeSeriesData = { daily?: TimeSeriesDaily[]; monthly?: TimeSeriesMonthly[] }
+type TimeSeriesResult = { success?: boolean; data?: TimeSeriesData }
 
 export default function SellerAnalyticsClient() {
   const { isLoading, user } = useProtectedRoute(["seller"])
@@ -58,7 +65,7 @@ export default function SellerAnalyticsClient() {
     const controller = new AbortController()
     const signal = controller.signal
 
-    const fetchJsonSafely = async (url: string) => {
+    const fetchJsonSafely = async (url: string): Promise<unknown | null> => {
       try {
         const res = await fetch(url, { signal })
         const text = await res.text()
@@ -70,21 +77,22 @@ export default function SellerAnalyticsClient() {
 
         try {
           const data = JSON.parse(text)
-          const code = data && typeof data === "object" && "code" in data ? (data as any).code : null
+          const code = data && typeof data === 'object' && 'code' in data ? (data as Record<string, unknown>)['code'] as string : null
           if (!res.ok) {
-            if (res.status === 404 && (code === "NO_ORDERS_FOUND" || code === "NO_DATA_AVAILABLE")) {
+            if (res.status === 404 && (code === 'NO_ORDERS_FOUND' || code === 'NO_DATA_AVAILABLE')) {
               return null
             }
-            const msg = data && data.error ? data.error : `HTTP ${res.status} ${res.statusText}`
+            const msg = (data && typeof data === 'object' && 'error' in data) ? (data as Record<string, unknown>)['error'] as string : `HTTP ${res.status} ${res.statusText}`
             throw new Error(msg)
           }
           return data
-        } catch (e: any) {
-          if (res.status === 404 && text.includes("No orders found")) return null
-          throw new Error(`Invalid JSON response from ${url}: ${e?.message ?? e}`)
+        } catch (e: unknown) {
+          if (res.status === 404 && text.includes('No orders found')) return null
+          const em = (e as Error)?.message ?? String(e)
+          throw new Error(`Invalid JSON response from ${url}: ${em}`)
         }
-      } catch (e: any) {
-        if (e?.name === "AbortError") return null
+      } catch (e: unknown) {
+        if ((e as { name?: string }).name === 'AbortError') return null
         throw e
       }
     }
@@ -104,27 +112,28 @@ export default function SellerAnalyticsClient() {
 
         const settled = await Promise.allSettled(endpoints.map((e) => fetchJsonSafely(e)))
 
-        if (settled[0].status === "fulfilled") setOverview(settled[0].value as any)
-        else console.warn("Overview fetch failed:", (settled[0] as any).reason)
+        if (settled[0].status === "fulfilled") setOverview(settled[0].value as OverviewResult | null)
+        else console.warn("Overview fetch failed:", (settled[0] as PromiseRejectedResult).reason)
 
-        if (settled[1].status === "fulfilled") setProducts(settled[1].value as any)
-        else console.warn("Products fetch failed:", (settled[1] as any).reason)
+        if (settled[1].status === "fulfilled") setProducts(settled[1].value as ProductsResult | null)
+        else console.warn("Products fetch failed:", (settled[1] as PromiseRejectedResult).reason)
 
-        if (settled[2].status === "fulfilled") setCustomers(settled[2].value as any)
-        else console.warn("Customers fetch failed:", (settled[2] as any).reason)
+        if (settled[2].status === "fulfilled") setCustomers(settled[2].value as CustomersResult | null)
+        else console.warn("Customers fetch failed:", (settled[2] as PromiseRejectedResult).reason)
 
-        if (settled[3].status === "fulfilled") setTimeSeries(settled[3].value as any)
-        else console.warn("Time-series fetch failed:", (settled[3] as any).reason)
+        if (settled[3].status === "fulfilled") setTimeSeries(settled[3].value as TimeSeriesResult | null)
+        else console.warn("Time-series fetch failed:", (settled[3] as PromiseRejectedResult).reason)
 
         const allFailed = settled.every((s) => s.status === "rejected")
         if (allFailed) {
-          const reason = (settled[0] as any).reason || "No data available"
+          const rejected = settled.find((s) => s.status === 'rejected') as PromiseRejectedResult | undefined
+          const reason = rejected ? rejected.reason : 'No data available'
           throw new Error(String(reason))
         }
-      } catch (err: any) {
-        if (err.name === "AbortError") return
+      } catch (err: unknown) {
+        if ((err as { name?: string }).name === "AbortError") return
         console.error("Error fetching analytics:", err)
-        setError(err?.message || String(err))
+        setError((err as Error)?.message || String(err))
       } finally {
         setLoadingData(false)
       }
@@ -161,11 +170,11 @@ export default function SellerAnalyticsClient() {
           throw new Error(`Failed to fetch time-series: ${res.status}`)
         }
         const data = await res.json()
-        setTimeSeries(data as any)
-      } catch (err: any) {
-        if (err?.name === "AbortError") return
+        setTimeSeries(data as TimeSeriesResult)
+      } catch (err: unknown) {
+        if ((err as { name?: string }).name === "AbortError") return
         console.error("Error fetching time-series:", err)
-        setError(err?.message || String(err))
+        setError((err as Error)?.message || String(err))
       } finally {
         setLoadingData(false)
       }
@@ -389,7 +398,7 @@ export default function SellerAnalyticsClient() {
             <div className="space-y-4 mb-6">
               <div className="flex flex-col gap-3">
                 <Label className="text-sm font-medium">Granularity</Label>
-                <Select value={granularity} onValueChange={(v: any) => setGranularity(v)}>
+                <Select value={granularity} onValueChange={(v: string) => setGranularity(v as "daily" | "weekly" | "monthly" | "all") }>
                   <SelectTrigger className="w-full sm:w-48">
                     <SelectValue />
                   </SelectTrigger>
@@ -454,23 +463,23 @@ export default function SellerAnalyticsClient() {
               <div>
                 {(() => {
                   const ds = (() => {
-                    if (!timeSeries || !timeSeries.data) return [] as any[]
+                    if (!timeSeries || !timeSeries.data) return [] as TimeSeriesDaily[]
 
-                    const dailyArr = (timeSeries.data as any).daily || []
+                    const dailyArr = (timeSeries.data as TimeSeriesData).daily || []
 
                     // Monthly data comes as objects with a `month` key
                     if (granularity === "monthly") {
-                      const monthlyArr = (timeSeries.data as any).monthly || []
+                      const monthlyArr = (timeSeries.data as TimeSeriesData).monthly || []
                       return (monthlyArr || [])
                         .slice()
-                        .sort((a: any, b: any) => String(a.month).localeCompare(String(b.month)))
-                        .map((d: any) => ({ date: d.month, revenue: Number(d.revenue ?? d.total ?? 0) }))
+                        .sort((a: TimeSeriesMonthly, b: TimeSeriesMonthly) => String(a.month).localeCompare(String(b.month)))
+                        .map((d: TimeSeriesMonthly) => ({ date: d.month, revenue: Number(d.revenue ?? d.total ?? 0) }))
                     }
 
                     // Weekly is not provided by the backend; aggregate daily into weeks here
                     if (granularity === "weekly") {
                       const weeklyMap = new Map<string, number>()
-                      ;(dailyArr || []).forEach((d: any) => {
+                      ;(dailyArr || []).forEach((d: TimeSeriesDaily) => {
                         const dt = new Date(d.date)
                         const wk = format(startOfWeek(dt), 'yyyy-MM-dd')
                         weeklyMap.set(wk, (weeklyMap.get(wk) || 0) + Number(d.revenue ?? 0))
@@ -484,8 +493,8 @@ export default function SellerAnalyticsClient() {
                     // Default: daily
                     return (dailyArr || [])
                       .slice()
-                      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                      .map((d: any) => ({ date: d.date, revenue: Number(d.revenue ?? 0) }))
+                      .sort((a: TimeSeriesDaily, b: TimeSeriesDaily) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                      .map((d: TimeSeriesDaily) => ({ date: d.date, revenue: Number(d.revenue ?? 0) }))
                   })()
 
                   if (!ds.length)

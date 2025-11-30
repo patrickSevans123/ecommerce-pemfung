@@ -1,7 +1,7 @@
 import { OrderDocument } from '@/lib/db/models/order';
 import { pipe } from 'fp-ts/function';
 import * as A from 'fp-ts/Array';
-import * as O from 'fp-ts/Option';
+// Option utilities not currently used
 import * as Ord from 'fp-ts/Ord';
 import * as N from 'fp-ts/number';
 import * as S from 'fp-ts/string';
@@ -215,7 +215,7 @@ export const calculateRevenueMetrics = (orders: OrderDocument[], sellerObjectId:
 
   let totalRevenue = 0;
   let totalSubtotal = 0;
-  let totalShipping = 0; // will remain 0 because we exclude shipping
+  const totalShipping = 0; // will remain 0 because we exclude shipping
   let totalDiscount = 0;
 
   const filtered = orders.filter(o => isOrderCompleted(o) && getSellerOrderTotal(o, sellerIdStr) > 0);

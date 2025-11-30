@@ -148,8 +148,8 @@ export default function SellerDashboard() {
         } else {
           setTotalProducts(null);
         }
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.error('Error fetching seller overview:', err);
         setTotalProducts(null);
         setTotalSales(null);

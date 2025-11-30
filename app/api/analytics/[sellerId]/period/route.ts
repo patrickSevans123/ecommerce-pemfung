@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateStatistics, serializeStats } from '@/lib/analytics/service';
 import Order from '@/lib/db/models/order';
 import mongoose from 'mongoose';
-import { sub, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 export async function GET(
   request: NextRequest,

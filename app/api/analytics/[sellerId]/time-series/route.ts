@@ -29,7 +29,7 @@ export async function GET(
   const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
 
   // Build query filter
-  const query: any = { 'items.seller': sellerObjectId };
+  const query: mongoose.FilterQuery<Record<string, unknown>> = { 'items.seller': sellerObjectId };
   
   // Handle specific period (replaces /period endpoint functionality)
   if (date && granularity !== 'all') {
@@ -65,7 +65,7 @@ export async function GET(
     if (endDate) query.createdAt.$lte = new Date(endDate);
   }
 
-  const orders = await Order.find(query).lean() as any[];
+  const orders = await Order.find(query);
 
   if (!orders || orders.length === 0) {
     return NextResponse.json({ 
@@ -91,7 +91,7 @@ export async function GET(
   }
 
   // For time-series analysis, return daily/monthly metrics
-  const metrics = calculateTimeSeriesMetrics(orders as any, sellerObjectId);
+  const metrics = calculateTimeSeriesMetrics(orders, sellerObjectId);
 
   return NextResponse.json({
     success: true,

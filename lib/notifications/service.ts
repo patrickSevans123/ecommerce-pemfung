@@ -1,6 +1,6 @@
-import { Subject, Observable, filter, debounceTime, bufferTime, map, shareReplay } from 'rxjs';
+import { Observable, filter } from 'rxjs';
 import { SystemEvent } from '@/lib/domain/types';
-import { NotificationSubscription, RealtimeAnalyticsData } from './types';
+import { NotificationSubscription, NotificationData } from './types';
 import { Notification } from '@/lib/db/models';
 import { UserId } from '@/lib/domain/types';
 import { ReplaySubject } from 'rxjs';
@@ -73,14 +73,14 @@ function extractEventFields(event: SystemEvent): {
   sellerId?: string;
   orderId?: string;
   productId?: string;
-  data?: Record<string, any>;
+  data?: NotificationData;
 } {
   const fields: {
     userId?: string;
     sellerId?: string;
     orderId?: string;
     productId?: string;
-    data?: Record<string, any>;
+    data?: NotificationData;
   } = {};
 
   if (isUserEvent(event)) {
@@ -96,7 +96,17 @@ function extractEventFields(event: SystemEvent): {
     fields.productId = event.productId as string;
   }
   if ('data' in event) {
-    fields.data = event.data as Record<string, any>;
+    // Try to shape the event payload into our deterministic NotificationData
+    const d = event.data as Record<string, unknown>;
+    fields.data = {
+      productName: typeof d.productName === 'string' ? String(d.productName) : undefined,
+      quantity: typeof d.quantity === 'number' ? d.quantity : undefined,
+      amount: typeof d.amount === 'number' ? d.amount : undefined,
+      trackingNumber: typeof d.trackingNumber === 'string' ? String(d.trackingNumber) : undefined,
+      currentStock: typeof d.currentStock === 'number' ? d.currentStock : undefined,
+      orderId: typeof d.orderId === 'string' ? String(d.orderId) : undefined,
+      reason: typeof d.reason === 'string' ? String(d.reason) : undefined,
+    };
   }
 
   return fields;
