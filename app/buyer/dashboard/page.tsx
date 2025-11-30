@@ -17,6 +17,8 @@ export default function BuyerDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
   const [cartItemsCount, setCartItemsCount] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [activeOrders, setActiveOrders] = useState(0);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -45,9 +47,31 @@ export default function BuyerDashboard() {
       }
     };
 
+    const fetchOrdersCount = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/orders/list?userId=${encodeURIComponent(user.id)}`);
+        const payload = await res.json();
+        const ordersArray = Array.isArray(payload) ? payload : payload?.data ?? [];
+
+        setTotalOrders(ordersArray.length);
+        // active = not delivered / cancelled / refunded
+        const active = ordersArray.filter((o: any) => {
+          const s = o?.status?.status || 'pending';
+          return !['delivered', 'cancelled', 'refunded'].includes(s);
+        }).length;
+        setActiveOrders(active);
+      } catch (err) {
+        console.error('Error fetching orders for stats:', err);
+        setTotalOrders(0);
+        setActiveOrders(0);
+      }
+    };
+
     if (user?.id && user?.role === 'buyer') {
       fetchNotifications();
       fetchCartCount();
+      fetchOrdersCount();
     }
   }, [user]);
 
@@ -101,11 +125,11 @@ export default function BuyerDashboard() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Orders</span>
-                <span className="text-2xl font-bold">0</span>
+                <span className="text-2xl font-bold">{totalOrders}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Active Orders</span>
-                <span className="text-2xl font-bold">0</span>
+                <span className="text-2xl font-bold">{activeOrders}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Cart Items</span>
