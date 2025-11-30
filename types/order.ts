@@ -1,5 +1,7 @@
+import { Product } from "./product";
+
 export interface OrderItem {
-  product: string | { _id?: string; title?: string; price?: number };
+  product: Product;
   seller: string;
   name?: string;
   price: number;
