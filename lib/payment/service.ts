@@ -86,7 +86,8 @@ const validateAllItemsStock = (
 export const validateCart = (
   userId: UserId,
   paymentMethod: PaymentMethod,
-  shippingAddress: string
+  shippingAddress: string,
+  selectedItemIds?: string[]
 ): ResultAsync<ValidatedCartContext, PaymentError> => {
   return ResultAsync.fromPromise(
     (async () => {
@@ -100,11 +101,22 @@ export const validateCart = (
         throw cartEmptyError();
       }
 
-      // Fetch all products and validate stock
-      const productIds = cart.items.map((item: CartItemDocument) => item.product);
+      // If selectedItemIds provided, filter cart items to only those selected
+      const selectedItems: CartItemDocument[] | undefined = selectedItemIds && selectedItemIds.length > 0
+        ? cart.items.filter((it: CartItemDocument) => selectedItemIds.includes((it.product as mongoose.Types.ObjectId).toString()))
+        : undefined;
+
+      const itemsToValidate = selectedItems && selectedItems.length > 0 ? selectedItems : cart.items;
+
+      if (!itemsToValidate || itemsToValidate.length === 0) {
+        throw cartEmptyError();
+      }
+
+      // Fetch products for the items we will validate
+      const productIds = itemsToValidate.map((item: CartItemDocument) => item.product);
       const products = await Product.find({ _id: { $in: productIds } });
 
-      if (products.length !== cart.items.length) {
+      if (products.length !== itemsToValidate.length) {
         throw createPaymentError(
           PaymentErrorCodes.PRODUCT_NOT_FOUND,
           'Some products not found'
@@ -116,14 +128,14 @@ export const validateCart = (
         products.map((p: ProductDocument) => [(p._id as mongoose.Types.ObjectId).toString(), p])
       );
 
-      // Validate stock using functional approach
-      const stockValidation = await validateAllItemsStock(cart.items, productMap);
+      // Validate stock using functional approach (only validate the items we're ordering)
+      const stockValidation = await validateAllItemsStock(itemsToValidate, productMap);
       if (stockValidation.isErr()) {
         throw stockValidation.error;
       }
 
-      // Calculate subtotal
-      const subtotal = cart.items.reduce((sum: number, item: CartItemDocument) => {
+      // Calculate subtotal for selected items (or full cart if none selected)
+      const subtotal = itemsToValidate.reduce((sum: number, item: CartItemDocument) => {
         const product = productMap.get(item.product.toString());
         return sum + (product?.price || 0) * item.quantity;
       }, 0);
@@ -135,6 +147,7 @@ export const validateCart = (
       return {
         userId,
         cart,
+        selectedItems: selectedItems && selectedItems.length > 0 ? selectedItems : undefined,
         products: productMap,
         paymentMethod,
         shippingAddress,
@@ -286,10 +299,13 @@ export const createOrder = (
       session.startTransaction();
 
       try {
-        const { cart, products, userId, subtotal, shipping, discount, total, promoCode, shippingAddress, paymentMethod } = context;
+        const { cart, selectedItems, products, userId, subtotal, shipping, discount, total, promoCode, shippingAddress, paymentMethod } = context;
 
-        // Create order items using map (functional)
-        const orderItems = cart.items.map(createOrderItem(products));
+        // Determine which items to order: selectedItems if provided, otherwise full cart
+        const itemsToOrder = selectedItems && selectedItems.length > 0 ? selectedItems : cart.items;
+
+        // Create order items using selected items
+        const orderItems = itemsToOrder.map(createOrderItem(products));
 
         // Create order with pending status
         const order = await Order.create([{
@@ -306,8 +322,8 @@ export const createOrder = (
           shippingAddress,
         }], { session });
 
-        // Update product stock
-        await updateAllProductStocks(cart.items, session);
+        // Update product stock for ordered items
+        await updateAllProductStocks(itemsToOrder, session);
 
         // Update promo code usage if applied
         if (promoCode) {
@@ -321,10 +337,15 @@ export const createOrder = (
           );
         }
 
-        // Clear cart
+        // Remove ordered items from the user's cart (keep remaining items)
+        const originalItems = (cart.items || []) as CartItemDocument[];
+        const remainingItems = originalItems.filter((orig) => {
+          return !itemsToOrder.some((ordered) => (ordered.product as mongoose.Types.ObjectId).toString() === (orig.product as mongoose.Types.ObjectId).toString());
+        });
+
         await Cart.findByIdAndUpdate(
           cart._id,
-          { $set: { items: [] } },
+          { $set: { items: remainingItems } },
           { session }
         );
 
@@ -373,9 +394,10 @@ export const createOrder = (
 export const checkoutPipeline = (
   userId: UserId,
   paymentMethod: PaymentMethod,
-  shippingAddress: string
+  shippingAddress: string,
+  selectedItemIds?: string[]
 ): ResultAsync<PaymentSuccess, PaymentError> => {
-  return validateCart(userId, paymentMethod, shippingAddress)
+  return validateCart(userId, paymentMethod, shippingAddress, selectedItemIds)
     .andThen(createOrder);
 };
 

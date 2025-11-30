@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       await validateRequestBody(request, checkoutSchema),
       async (data) => {
 
-        const { userId, paymentMethod, shippingAddress } = data;
+        const { userId, paymentMethod, shippingAddress, items } = data as { userId: string; paymentMethod: string; shippingAddress: string; items?: string[] };
 
         // Build payment method object
         const payment: PaymentMethod = paymentMethod === 'balance'
@@ -33,7 +33,8 @@ export async function POST(request: Request) {
         const result = await checkoutPipeline(
           userId,
           payment,
-          shippingAddress
+          shippingAddress,
+          items // optional selected item IDs to limit checkout
         );
 
         // Handle checkout result
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
                 error.code === 'PROMO_CODE_EXPIRED' || error.code === 'PROMO_CODE_LIMIT_REACHED' ? HttpStatus.BAD_REQUEST :
                 HttpStatus.INTERNAL_SERVER_ERROR;
 
-            if (statusCode === HttpStatus.NOT_FOUND) {
+          if (statusCode === HttpStatus.NOT_FOUND) {
             return notFoundError(error.message);
           } else if (statusCode === HttpStatus.BAD_REQUEST) {
             return badRequestError(error.message, error.details);
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
         const checkoutValue = result.value;
         if (payment.method === 'balance') {
           const payResult = await paymentPipeline(checkoutValue.orderId, data.promoCode);
-            if (payResult.isOk()) {
+          if (payResult.isOk()) {
             return successResponse(payResult.value);
           } else {
             const error = payResult.error;

@@ -9,6 +9,7 @@ export const checkoutSchema = z.object({
   }),
   shippingAddress: z.string().min(10, 'Shipping address must be at least 10 characters'),
   promoCode: z.string().optional(),
+  items: z.array(z.string()).optional(),  // Optional list of selected product IDs to checkout (filters cart items)
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
