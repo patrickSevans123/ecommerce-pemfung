@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { NotificationList } from '@/components/notifications/notification-list';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { Loader } from '@/components/loader';
+import { Order } from '@/types';
 
 export default function BuyerDashboard() {
   const { isLoading, user } = useProtectedRoute(['buyer']);
@@ -56,7 +57,7 @@ export default function BuyerDashboard() {
 
         setTotalOrders(ordersArray.length);
         // active = not delivered / cancelled / refunded
-        const active = ordersArray.filter((o: any) => {
+        const active = ordersArray.filter((o: Order) => {
           const s = o?.status?.status || 'pending';
           return !['delivered', 'cancelled', 'refunded'].includes(s);
         }).length;
