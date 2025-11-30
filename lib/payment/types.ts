@@ -1,6 +1,6 @@
 // Distinct types for each stage of the payment pipeline
 import { UserId, PaymentMethod, OrderId } from '@/lib/domain/types';
-import { CartDocument } from '@/lib/db/models/cart';
+import { CartDocument, CartItemDocument } from '@/lib/db/models/cart';
 import { ProductDocument } from '@/lib/db/models/product';
 import { PromoCodeDocument } from '@/lib/db/models/promoCode';
 import { OrderDocument } from '@/lib/db/models/order';
@@ -9,6 +9,7 @@ import { OrderDocument } from '@/lib/db/models/order';
 export interface ValidatedCartContext {
   userId: UserId;
   cart: CartDocument;
+  selectedItems?: CartItemDocument[]; // items selected for checkout (if subset of cart was requested)
   products: Map<string, ProductDocument>;
   paymentMethod: PaymentMethod;
   shippingAddress: string;
@@ -45,4 +46,10 @@ export interface PaymentSuccess {
   orderId: OrderId;
   order: OrderDocument;
   message: string;
+}
+
+// Multi-Order Payment Success Result
+export interface MultiOrderPaymentSuccess {
+  orders: PaymentSuccess[];
+  message: string; // Overall message for multiple orders
 }

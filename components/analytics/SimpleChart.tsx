@@ -207,7 +207,7 @@ export default function SimpleChart({
             </>
           )}
         </div>
-        <div className="flex gap-4 text-slate-700 font-medium flex-shrink-0 ml-4">
+        <div className="flex gap-4 text-slate-700 font-medium shrink-0 ml-4">
           <div>
             <span className="text-slate-500 text-xs mr-1">min:</span>
             {formatNumber(min)}

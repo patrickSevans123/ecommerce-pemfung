@@ -349,7 +349,7 @@ export default function SellerAnalyticsClient() {
                           <p className="text-sm font-medium text-foreground truncate">{p.productName}</p>
                           <p className="text-xs text-muted-foreground">{p.quantitySold} sold</p>
                         </div>
-                        <p className="text-sm font-semibold text-primary ml-2 flex-shrink-0">${p.revenue.toFixed(0)}</p>
+                        <p className="text-sm font-semibold text-primary ml-2 shrink-0">${p.revenue.toFixed(0)}</p>
                       </div>
                     ))
                   ) : (

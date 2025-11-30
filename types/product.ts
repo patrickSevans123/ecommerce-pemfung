@@ -6,7 +6,7 @@ export interface Product {
   category: string;
   images: string[];
   stock: number;
-  seller: string;
+  seller: { _id?: string; name?: string; email?: string };
   tags: string[];
   avgRating: number;
   reviewsCount: number;

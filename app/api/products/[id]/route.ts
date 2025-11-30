@@ -28,7 +28,7 @@ const updateProductSchema = z.object({
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   await connect();
-  const p = await Product.findById(id).lean();
+  const p = await Product.findById(id).populate('seller', 'name email').lean();
   if (!p) return notFoundError('Product', id);
   return successResponse(p);
 }

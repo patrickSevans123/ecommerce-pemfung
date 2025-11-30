@@ -10,7 +10,11 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ pr
 
   await connect();
 
-  const reviews = await Review.find({ product: productId }).sort({ createdAt: -1 }).lean();
+  // populate user info
+  const reviews = await Review.find({ product: productId })
+    .sort({ createdAt: -1 })
+    .populate('user', 'name email')
+    .lean();
 
   if (reviews.length === 0) {
     const productExists = await Product.exists({ _id: productId });

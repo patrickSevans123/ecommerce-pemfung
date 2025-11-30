@@ -57,10 +57,6 @@ export interface OrderShippedData {
   trackingNumber: string;
 }
 
-export interface ReviewAddedData {
-  // Additional data if needed, rating and productName are in main event
-}
-
 export interface CartUpdatedData {
   productName: string;
   action: 'added' | 'removed' | 'updated';

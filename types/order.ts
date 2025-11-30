@@ -1,5 +1,9 @@
+import { Product } from "./product";
+import { PromoCode } from "./promo-code";
+import { User } from "./user";
+
 export interface OrderItem {
-  product: string | { _id?: string; title?: string; price?: number };
+  product: Product;
   seller: string;
   name?: string;
   price: number;
@@ -17,12 +21,12 @@ export interface OrderStatus {
 
 export interface Order {
   _id: string;
-  user?: string | { _id?: string; email?: string; name?: string };
+  user?: User;
   items: OrderItem[];
   subtotal: number;
   shipping: number;
   discount?: number;
-  promoCode?: string | { code?: string; description?: string };
+  promoCode?: PromoCode;
   promoCodeApplied?: string;
   total: number;
   status: OrderStatus;
