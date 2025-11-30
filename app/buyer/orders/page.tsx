@@ -268,7 +268,6 @@ export default function BuyerOrdersPage() {
                   <div className="flex w-full sm:w-auto gap-3">
                     {order.status?.status === 'shipped' && (
                       <Button
-                        className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                         disabled={actionLoading === order._id}
                         onClick={() => markSent(order._id)}
                       >
@@ -316,7 +315,6 @@ export default function BuyerOrdersPage() {
             <Button
               onClick={() => doMarkSent(confirmOrderId)}
               disabled={!!actionLoading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               {actionLoading ? 'Updating...' : 'Yes, I received it'}
             </Button>
