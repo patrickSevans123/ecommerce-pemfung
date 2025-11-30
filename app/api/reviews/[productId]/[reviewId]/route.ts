@@ -23,7 +23,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ pr
 
   await connect();
 
-  const review = await Review.findById(reviewId).lean();
+  // include user info when returning a single review
+  const review = await Review.findById(reviewId).populate('user', 'name email').lean();
 
   if (!review) {
     return notFoundError('Review', reviewId);
