@@ -2,14 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
 import { productsAPI } from '@/utils/api';
 import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ProductCard from '@/components/product/ProductCard';
 import {
   Select,
   SelectContent,
@@ -260,39 +258,7 @@ export default function ProductsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((product) => (
-              <Card key={product._id} className="hover:shadow-lg transition-shadow bg-gray-900 border-white text-white">
-                <CardHeader>
-                  <div className="aspect-square bg-gray-700 rounded-md mb-4 overflow-hidden relative">
-                    {product.images && product.images.length > 0 ? (
-                      <Image
-                        src={product.images[0]}
-                        alt={product.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 1024px) 100vw, 50vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        No image available
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <h3 className="text-lg font-medium mb-2">{product.title}</h3>
-                  <p className="text-sm text-gray-400 mb-4">{product.description?.slice(0, 120) || ''}</p>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-2xl font-bold">${product.price.toFixed(2)}</div>
-                      <Badge variant="secondary">{product.category}</Badge>
-                    </div>
-                    <Button asChild>
-                      <Link href={`/products/${product._id}`}>View</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-                <CardFooter />
-              </Card>
+              <ProductCard key={product._id} product={product} />
             ))}
           </div>
         )}

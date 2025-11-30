@@ -24,6 +24,7 @@ import type {
   PromoAppliedContext,
   OrderPaymentContext,
   PaymentSuccess,
+  MultiOrderPaymentSuccess, // Add this
 } from './types';
 
 // Re-export constants for backward compatibility
@@ -86,7 +87,8 @@ const validateAllItemsStock = (
 export const validateCart = (
   userId: UserId,
   paymentMethod: PaymentMethod,
-  shippingAddress: string
+  shippingAddress: string,
+  selectedItemIds?: string[]
 ): ResultAsync<ValidatedCartContext, PaymentError> => {
   return ResultAsync.fromPromise(
     (async () => {
@@ -100,11 +102,22 @@ export const validateCart = (
         throw cartEmptyError();
       }
 
-      // Fetch all products and validate stock
-      const productIds = cart.items.map((item: CartItemDocument) => item.product);
+      // If selectedItemIds provided, filter cart items to only those selected
+      const selectedItems: CartItemDocument[] | undefined = selectedItemIds && selectedItemIds.length > 0
+        ? cart.items.filter((it: CartItemDocument) => selectedItemIds.includes((it.product as mongoose.Types.ObjectId).toString()))
+        : undefined;
+
+      const itemsToValidate = selectedItems && selectedItems.length > 0 ? selectedItems : cart.items;
+
+      if (!itemsToValidate || itemsToValidate.length === 0) {
+        throw cartEmptyError();
+      }
+
+      // Fetch products for the items we will validate
+      const productIds = itemsToValidate.map((item: CartItemDocument) => item.product);
       const products = await Product.find({ _id: { $in: productIds } });
 
-      if (products.length !== cart.items.length) {
+      if (products.length !== itemsToValidate.length) {
         throw createPaymentError(
           PaymentErrorCodes.PRODUCT_NOT_FOUND,
           'Some products not found'
@@ -116,14 +129,14 @@ export const validateCart = (
         products.map((p: ProductDocument) => [(p._id as mongoose.Types.ObjectId).toString(), p])
       );
 
-      // Validate stock using functional approach
-      const stockValidation = await validateAllItemsStock(cart.items, productMap);
+      // Validate stock using functional approach (only validate the items we're ordering)
+      const stockValidation = await validateAllItemsStock(itemsToValidate, productMap);
       if (stockValidation.isErr()) {
         throw stockValidation.error;
       }
 
-      // Calculate subtotal
-      const subtotal = cart.items.reduce((sum: number, item: CartItemDocument) => {
+      // Calculate subtotal for selected items (or full cart if none selected)
+      const subtotal = itemsToValidate.reduce((sum: number, item: CartItemDocument) => {
         const product = productMap.get(item.product.toString());
         return sum + (product?.price || 0) * item.quantity;
       }, 0);
@@ -135,6 +148,80 @@ export const validateCart = (
       return {
         userId,
         cart,
+        selectedItems: selectedItems && selectedItems.length > 0 ? selectedItems : undefined,
+        products: productMap,
+        paymentMethod,
+        shippingAddress,
+        subtotal,
+        shipping,
+        discount,
+        total,
+      } as ValidatedCartContext;
+    })(),
+    (error: unknown) => error as PaymentError
+  );
+};
+
+export const validateItems = (
+  userId: UserId,
+  paymentMethod: PaymentMethod,
+  shippingAddress: string,
+  selectedItemIds?: string[]
+): ResultAsync<ValidatedCartContext, PaymentError> => {
+  return ResultAsync.fromPromise(
+    (async () => {
+      // Fetch cart
+      const cart = await Cart.findOne({ user: userId });
+      if (!cart) {
+        throw cartNotFoundError();
+      }
+
+      const itemsToValidate: CartItemDocument[] = (selectedItemIds ?? []).map((itemId) => {
+        const [id, quantityStr] = itemId.split(':');
+
+        return {
+          product: new mongoose.Types.ObjectId(id),
+          quantity: Number(quantityStr),
+          addedAt: new Date(),
+        };
+      });
+
+      // Fetch products for the items we will validate
+      const productIds = itemsToValidate.map((item: CartItemDocument) => item.product);
+      const products = await Product.find({ _id: { $in: productIds } });
+
+      if (products.length !== itemsToValidate.length) {
+        throw createPaymentError(
+          PaymentErrorCodes.PRODUCT_NOT_FOUND,
+          'Some products not found'
+        );
+      }
+
+      // Create product map for easy lookup
+      const productMap = new Map<string, ProductDocument>(
+        products.map((p: ProductDocument) => [(p._id as mongoose.Types.ObjectId).toString(), p])
+      );
+
+      // Validate stock using functional approach (only validate the items we're ordering)
+      const stockValidation = await validateAllItemsStock(itemsToValidate, productMap);
+      if (stockValidation.isErr()) {
+        throw stockValidation.error;
+      }
+
+      // Calculate subtotal for selected items (or full cart if none selected)
+      const subtotal = itemsToValidate.reduce((sum: number, item: CartItemDocument) => {
+        const product = productMap.get(item.product.toString());
+        return sum + (product?.price || 0) * item.quantity;
+      }, 0);
+
+      const shipping = PAYMENT_CONSTANTS.FIXED_SHIPPING_COST;
+      const discount = 0;
+      const total = subtotal + shipping;
+
+      return {
+        userId,
+        cart,
+        selectedItems: selectedItemIds && selectedItemIds.length > 0 ? itemsToValidate : undefined,
         products: productMap,
         paymentMethod,
         shippingAddress,
@@ -279,79 +366,155 @@ const updateAllProductStocks = (
 // Step 4: Create Order
 export const createOrder = (
   context: PromoAppliedContext
-): ResultAsync<PaymentSuccess, PaymentError> => {
+): ResultAsync<MultiOrderPaymentSuccess, PaymentError> => {
   return ResultAsync.fromPromise(
     (async () => {
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        const { cart, products, userId, subtotal, shipping, discount, total, promoCode, shippingAddress, paymentMethod } = context;
+        const { cart, selectedItems, products, userId, promoCode, shippingAddress, paymentMethod } = context;
 
-        // Create order items using map (functional)
-        const orderItems = cart.items.map(createOrderItem(products));
+        // Determine which items to order: selectedItems if provided, otherwise full cart
+        const itemsToOrder = selectedItems && selectedItems.length > 0 ? selectedItems : cart.items;
 
-        // Create order with pending status
-        const order = await Order.create([{
-          user: userId,
-          items: orderItems,
-          subtotal,
-          shipping,
-          discount,
-          promoCode: promoCode?._id,
-          promoCodeApplied: promoCode?.code,
-          total,
-          status: { status: 'pending' } as OrderStatus,
-          payment: paymentMethod,
-          shippingAddress,
-        }], { session });
+        if (!itemsToOrder || itemsToOrder.length === 0) {
+          throw cartEmptyError();
+        }
 
-        // Update product stock
-        await updateAllProductStocks(cart.items, session);
+        const ordersCreated: PaymentSuccess[] = [];
+        const allCreatedOrderIds: mongoose.Types.ObjectId[] = [];
+        const orderedProductObjectIds: mongoose.Types.ObjectId[] = []; // To track all products ordered for cart removal
 
-        // Update promo code usage if applied
-        if (promoCode) {
+        // Group items by seller
+        const sellerGroupedItems = new Map<string, CartItemDocument[]>();
+        itemsToOrder.forEach(item => {
+          const product = products.get(item.product.toString());
+          if (product && product.seller) {
+            const sellerId = product.seller.toString();
+            if (!sellerGroupedItems.has(sellerId)) {
+              sellerGroupedItems.set(sellerId, []);
+            }
+            sellerGroupedItems.get(sellerId)!.push(item);
+            orderedProductObjectIds.push(item.product as mongoose.Types.ObjectId);
+          } else {
+            // This case should ideally not happen if validateCart/validateItems passed
+            throw createPaymentError(
+              PaymentErrorCodes.PRODUCT_NOT_FOUND,
+              `Product ${item.product} for seller grouping not found or has no seller`
+            );
+          }
+        });
+
+        // Calculate overall subtotal for proration if a fixed discount is applied across the whole cart
+        const overallSubtotalForProration = context.subtotal;
+
+        for (const [sellerId, sellerItems] of sellerGroupedItems.entries()) {
+          // Calculate subtotal for the current seller's items
+          const sellerSubtotal = sellerItems.reduce((sum: number, item: CartItemDocument) => {
+            const product = products.get(item.product.toString());
+            return sum + (product?.price || 0) * item.quantity;
+          }, 0);
+
+          let sellerShipping: number = PAYMENT_CONSTANTS.FIXED_SHIPPING_COST;
+          let sellerDiscount = 0;
+
+          if (promoCode) {
+            if (promoCode.discount.kind === 'percentage' && promoCode.discount.percent) {
+              sellerDiscount = (sellerSubtotal * promoCode.discount.percent) / 100;
+            } else if (promoCode.discount.kind === 'fixed' && promoCode.discount.amount) {
+              // Prorate fixed discount based on this seller's subtotal relative to the overall original subtotal
+              if (overallSubtotalForProration > 0) {
+                sellerDiscount = (sellerSubtotal / overallSubtotalForProration) * promoCode.discount.amount;
+              } else {
+                sellerDiscount = 0; // Avoid division by zero if cart was empty or items had 0 price
+              }
+            } else if (promoCode.discount.kind === 'free_shipping') {
+              sellerShipping = 0;
+            }
+          }
+
+          // Ensure discount doesn't make total negative
+          sellerDiscount = Math.min(sellerDiscount, sellerSubtotal + sellerShipping);
+
+          const sellerTotal = sellerSubtotal + sellerShipping - sellerDiscount;
+
+          // Create order items for this seller
+          const orderItems = sellerItems.map(createOrderItem(products));
+
+          // Create order with pending status for this seller
+          const order = await Order.create([{
+            user: userId,
+            items: orderItems,
+            subtotal: sellerSubtotal,
+            shipping: sellerShipping,
+            discount: sellerDiscount,
+            promoCode: promoCode?._id,
+            promoCodeApplied: promoCode?.code,
+            total: sellerTotal,
+            status: { status: 'pending' } as OrderStatus,
+            payment: paymentMethod,
+            shippingAddress,
+          }], { session });
+
+          const createdOrder = order[0] as OrderDocument;
+          allCreatedOrderIds.push(createdOrder._id as mongoose.Types.ObjectId);
+          ordersCreated.push({
+            orderId: (createdOrder._id as mongoose.Types.ObjectId).toString(),
+            order: createdOrder,
+            message: `Order for seller ${sellerId} created successfully.`,
+          });
+
+          // Update product stock for ordered items from this seller
+          await updateAllProductStocks(sellerItems, session);
+        }
+
+        // Update promo code usage if applied (for all created orders from this transaction)
+        if (promoCode && allCreatedOrderIds.length > 0) {
           await PromoCode.findByIdAndUpdate(
             promoCode._id,
             {
-              $inc: { usedCount: 1 },
-              $push: { appliesTo: order[0]._id }
+              $inc: { usedCount: 1 }, // Increment by 1 for the whole checkout transaction
+              $push: { appliesTo: { $each: allCreatedOrderIds } } // Push all order IDs
             },
             { session }
           );
         }
 
-        // Clear cart
+        // Remove ordered items from the user's cart (keep remaining items)
+        const originalItems = (cart.items || []) as CartItemDocument[];
+        const remainingItems = originalItems.filter((orig) => {
+          return !orderedProductObjectIds.some((orderedProductId) => orderedProductId.equals(orig.product));
+        });
+
         await Cart.findByIdAndUpdate(
           cart._id,
-          { $set: { items: [] } },
+          { $set: { items: remainingItems } },
           { session }
         );
 
         await session.commitTransaction();
 
-        const createdOrder = order[0] as OrderDocument;
-        const orderId = (createdOrder._id as mongoose.Types.ObjectId).toString();
-
-        // Emit OrderPlaced notification (fire-and-forget)
-        // NOTE: Seller notification will be sent only after payment is confirmed
-        emitEvent({
-          type: 'ORDER_PLACED',
-          userId,
-          orderId,
-          total,
-          sellerId: createdOrder.items[0]?.seller?.toString() || '',
-          data: {
-            productName: createdOrder.items[0]?.name || 'Product',
-            quantity: createdOrder.items[0]?.quantity || 1,
-            totalAmount: total,
-          },
-        }).catch(error => console.error('Failed to emit OrderPlaced event:', error));
+        // Emit OrderPlaced notification for EACH created order (fire-and-forget)
+        ordersCreated.forEach(orderSuccess => {
+          const createdOrder = orderSuccess.order;
+          emitEvent({
+            type: 'ORDER_PLACED',
+            userId,
+            orderId: orderSuccess.orderId,
+            total: createdOrder.total,
+            sellerId: createdOrder.items[0]?.seller?.toString() || '', // Assuming at least one item per order
+            data: {
+              productName: createdOrder.items[0]?.name || 'Product',
+              quantity: createdOrder.items[0]?.quantity || 1,
+              totalAmount: createdOrder.total,
+            },
+          }).catch(error => console.error(`Failed to emit OrderPlaced event for order ${orderSuccess.orderId}:`, error));
+        });
 
         return {
-          orderId,
-          order: createdOrder,
-          message: 'Order created successfully. Please proceed with payment.',
+          orders: ordersCreated,
+          message: `${ordersCreated.length} orders created successfully. Please proceed with payment.`,
         };
       } catch (error: unknown) {
         await session.abortTransaction();
@@ -373,9 +536,15 @@ export const createOrder = (
 export const checkoutPipeline = (
   userId: UserId,
   paymentMethod: PaymentMethod,
-  shippingAddress: string
-): ResultAsync<PaymentSuccess, PaymentError> => {
-  return validateCart(userId, paymentMethod, shippingAddress)
+  shippingAddress: string,
+  selectedItemIds?: string[],
+  isDirectCheckout?: boolean
+): ResultAsync<MultiOrderPaymentSuccess, PaymentError> => {
+  if (isDirectCheckout) {
+    return validateItems(userId, paymentMethod, shippingAddress, selectedItemIds)
+      .andThen(createOrder);
+  }
+  return validateCart(userId, paymentMethod, shippingAddress, selectedItemIds)
     .andThen(createOrder);
 };
 

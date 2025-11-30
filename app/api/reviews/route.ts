@@ -38,17 +38,16 @@ export async function POST(request: NextRequest) {
         comment,
       });
 
-      const reviews = await Review.find({ product: productId }).sort({ createdAt: -1 }).lean();
+      // populate with user info
+      await reviewDoc.populate('user', 'name email');
+
+      const reviews = await Review.find({ product: productId }).sort({ createdAt: -1 }).populate('user', 'name email').lean();
       const stats = calculateRatingStats(reviews.map((r) => ({ rating: r.rating })));
 
       await Product.findByIdAndUpdate(productId, {
         avgRating: stats.average,
         reviewsCount: stats.count,
       });
-
-      // Emit ReviewAdded notification removed - no longer supported
-      // Review added events are no longer emitted as notifications
-      // You can implement this separately if needed
 
       return createdResponse({ review: reviewDoc.toObject(), stats });
     }
