@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Review } from '@/types/review';
+import { Review } from '@/types';
 import { Star } from 'lucide-react';
 
 interface Props {

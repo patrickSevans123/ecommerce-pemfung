@@ -1,4 +1,4 @@
-import { CreateReviewDto, Review, ReviewsResponse } from '@/types/review';
+import { CreateReviewDto, Review, ReviewsResponse } from '@/types';
 import { fetchAPI } from './fetcher';
 
 export const reviewsAPI = {

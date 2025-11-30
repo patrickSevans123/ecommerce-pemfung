@@ -5,3 +5,4 @@ export * from './promo-code';
 export * from './user';
 export * from './order';
 export * from './cart';
+export * from './review';

@@ -9,7 +9,7 @@ import { productsAPI, cartAPI } from '@/utils/api';
 import { reviewsAPI } from '@/utils/api/reviews';
 import ReviewForm from '@/components/review/ReviewForm';
 import ReviewList from '@/components/review/ReviewList';
-import { Review } from '@/types/review';
+import { Review } from '@/types';
 import { CartItem, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';

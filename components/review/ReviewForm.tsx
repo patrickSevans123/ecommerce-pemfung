@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CreateReviewDto, Review } from '@/types/review';
+import { CreateReviewDto, Review } from '@/types';
 import { reviewsAPI } from '@/utils/api/reviews';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
