@@ -10,7 +10,7 @@ import { reviewsAPI } from '@/utils/api/reviews';
 import ReviewForm from '@/components/review/ReviewForm';
 import ReviewList from '@/components/review/ReviewList';
 import { Review } from '@/types/review';
-import { Product } from '@/types';
+import { CartItem, Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';
 import { Input } from '@/components/ui/input';
@@ -116,8 +116,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         try {
           const current = await cartAPI.getCart(user.id);
           const items = current.cart?.items || [];
-          await Promise.all(items.map(async (it: any) => {
-            const pid = it.product || it.productId || '';
+          await Promise.all(items.map(async (it: CartItem) => {
+            const pid = it.productId || '';
             if (pid && pid !== productId) {
               try {
                 await cartAPI.removeItem(user.id, pid);
@@ -139,7 +139,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         router.push('/checkout');
       } catch (error: unknown) {
         console.error('Buy Now failed:', error);
-        const msg = (error as any)?.message || 'Failed to start checkout';
+        const msg = 'Failed to start checkout';
         toast.error(msg);
       } finally {
         setIsBuyingNow(false);
