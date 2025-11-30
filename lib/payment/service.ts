@@ -175,21 +175,15 @@ export const validateItems = (
         throw cartNotFoundError();
       }
 
-      const itemsToValidate: CartItemDocument[] = []
+      const itemsToValidate: CartItemDocument[] = (selectedItemIds ?? []).map((itemId) => {
+        const [id, quantityStr] = itemId.split(':');
 
-      if (selectedItemIds && selectedItemIds.length > 0) {
-        for (const itemId of selectedItemIds) {
-          const [id, quantityStr] = itemId.split(':');
-
-          const cartItem: CartItemDocument = {
-            product: new mongoose.Types.ObjectId(id),
-            quantity: Number(quantityStr),
-            addedAt: new Date()
-          }
-
-          itemsToValidate.push(cartItem);
-        }
-      }
+        return {
+          product: new mongoose.Types.ObjectId(id),
+          quantity: Number(quantityStr),
+          addedAt: new Date(),
+        };
+      });
 
       // Fetch products for the items we will validate
       const productIds = itemsToValidate.map((item: CartItemDocument) => item.product);
