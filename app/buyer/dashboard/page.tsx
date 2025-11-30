@@ -125,11 +125,11 @@ export default function BuyerDashboard() {
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/cart">View Cart</Link>
               </Button>
-              <Button className="w-full" variant="outline" disabled>
-                View Orders
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/buyer/orders">View Orders</Link>
               </Button>
-              <Button className="w-full" variant="outline" disabled>
-                Shopping Cart
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/cart">Shopping Cart</Link>
               </Button>
             </CardContent>
           </Card>

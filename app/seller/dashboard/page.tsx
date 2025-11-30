@@ -178,8 +178,8 @@ export default function SellerDashboard() {
               <Button className="w-full" variant="outline" disabled>
                 View Analytics
               </Button>
-              <Button className="w-full" variant="outline" disabled>
-                Manage Orders
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/seller/orders">Manage Orders</Link>
               </Button>
             </CardContent>
           </Card>
