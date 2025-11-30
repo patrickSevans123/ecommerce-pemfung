@@ -153,26 +153,6 @@ export default function BuyerDashboard() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Coming Soon Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Coming Soon</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600">
-              More features will be added soon, including:
-            </p>
-            <ul className="list-disc list-inside mt-4 space-y-2 text-gray-600">
-              <li>Order history and tracking</li>
-              <li>Shopping cart management</li>
-              <li>Wishlist</li>
-              <li>Saved addresses</li>
-              <li>Balance management</li>
-              <li>Purchase history analytics</li>
-            </ul>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
