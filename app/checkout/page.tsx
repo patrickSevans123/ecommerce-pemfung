@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
@@ -19,7 +19,7 @@ import {
   aggregateValidationErrors,
   sumQuantities,
 } from '@/lib/fp/cart-helpers';
-import { PromoCode } from '@/types';
+import { CheckoutPayload, PromoCode } from '@/types';
 import { toast } from 'sonner';
 
 import type { CartItemWithProduct as HelperCartItem } from '@/lib/fp/cart-helpers';
@@ -31,13 +31,6 @@ interface CartItemInput {
   product?: string;
   productId?: string;
   quantity: number;
-}
-
-interface CheckoutPayload {
-  userId: string;
-  paymentMethod: 'balance' | 'cash_on_delivery';
-  shippingAddress: string;
-  promoCode?: string;
 }
 
 const fetchCartItemWithProduct = async (
@@ -61,6 +54,7 @@ const fetchCartItemWithProduct = async (
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoading: authLoading, user } = useProtectedRoute(['buyer']);
 
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
@@ -89,7 +83,15 @@ export default function CheckoutPage() {
       const { cart } = await cartAPI.getCart(user.id);
 
       const itemsWithProducts = await Promise.all(cart.items.map(fetchCartItemWithProduct));
-      setCartItems(itemsWithProducts);
+      // If `items` query param present, it contains comma-separated productIds to include
+      const itemsParam = searchParams?.get('items');
+      if (itemsParam) {
+        const selectedIds = itemsParam.split(',').map((s) => decodeURIComponent(s));
+        const filtered = itemsWithProducts.filter((it) => selectedIds.includes(it.productId));
+        setCartItems(filtered);
+      } else {
+        setCartItems(itemsWithProducts);
+      }
 
       // Validate cart
       if (cart.items.length > 0) {
@@ -123,7 +125,7 @@ export default function CheckoutPage() {
       return sum;
     }, 0);
   }, [cartItems]);
-  
+
   const total = useMemo(() => Math.max(0, subtotal + shipping - discountAmount), [subtotal, shipping, discountAmount]);
   const totalItemsCount = sumQuantities(cartItems);
 
@@ -193,12 +195,17 @@ export default function CheckoutPage() {
         }
       }
 
+      // include selected items (if any) passed via query param so server creates order for selected items only
+      const itemsParam = searchParams?.get('items');
+      const items = itemsParam ? itemsParam.split(',').map((s) => decodeURIComponent(s)) : undefined;
+
       const payload: CheckoutPayload = {
         userId: user.id,
         paymentMethod,
         shippingAddress,
         promoCode: appliedPromo?.code,
       };
+      if (items && items.length > 0) payload.items = items;
 
       const res = await checkoutAPI.createCheckout(payload);
       if (res && res.orderId) {
@@ -210,7 +217,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Checkout failed:', error);
       const apiError = error as ApiError;
-      
+
       if (apiError) {
         const main = apiError.error || apiError.details || 'Checkout failed';
 

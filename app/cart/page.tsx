@@ -185,7 +185,10 @@ export default function CartPage() {
       alert('Please fix cart issues before proceeding to checkout');
       return;
     }
-    router.push('/checkout');
+    // Pass selected item ids to checkout via query param to ensure checkout shows only selected items
+    const selected = Array.from(selectedItems);
+    const query = selected.length ? `?items=${selected.map(encodeURIComponent).join(',')}` : '';
+    router.push(`/checkout${query}`);
   };
 
   const handleToggleSelection = (productId: string) => {
