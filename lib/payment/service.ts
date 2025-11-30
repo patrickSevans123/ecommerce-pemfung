@@ -161,6 +161,85 @@ export const validateCart = (
   );
 };
 
+export const validateItems = (
+  userId: UserId,
+  paymentMethod: PaymentMethod,
+  shippingAddress: string,
+  selectedItemIds?: string[]
+): ResultAsync<ValidatedCartContext, PaymentError> => {
+  return ResultAsync.fromPromise(
+    (async () => {
+      // Fetch cart
+      const cart = await Cart.findOne({ user: userId });
+      if (!cart) {
+        throw cartNotFoundError();
+      }
+
+      const itemsToValidate: CartItemDocument[] = []
+
+      if (selectedItemIds && selectedItemIds.length > 0) {
+        for (const itemId of selectedItemIds) {
+          const [id, quantityStr] = itemId.split(':');
+
+          const cartItem: CartItemDocument = {
+            product: new mongoose.Types.ObjectId(id),
+            quantity: Number(quantityStr),
+            addedAt: new Date()
+          }
+
+          itemsToValidate.push(cartItem);
+        }
+      }
+
+      // Fetch products for the items we will validate
+      const productIds = itemsToValidate.map((item: CartItemDocument) => item.product);
+      const products = await Product.find({ _id: { $in: productIds } });
+
+      if (products.length !== itemsToValidate.length) {
+        throw createPaymentError(
+          PaymentErrorCodes.PRODUCT_NOT_FOUND,
+          'Some products not found'
+        );
+      }
+
+      // Create product map for easy lookup
+      const productMap = new Map<string, ProductDocument>(
+        products.map((p: ProductDocument) => [(p._id as mongoose.Types.ObjectId).toString(), p])
+      );
+
+      // Validate stock using functional approach (only validate the items we're ordering)
+      const stockValidation = await validateAllItemsStock(itemsToValidate, productMap);
+      if (stockValidation.isErr()) {
+        throw stockValidation.error;
+      }
+
+      // Calculate subtotal for selected items (or full cart if none selected)
+      const subtotal = itemsToValidate.reduce((sum: number, item: CartItemDocument) => {
+        const product = productMap.get(item.product.toString());
+        return sum + (product?.price || 0) * item.quantity;
+      }, 0);
+
+      const shipping = PAYMENT_CONSTANTS.FIXED_SHIPPING_COST;
+      const discount = 0;
+      const total = subtotal + shipping;
+
+      return {
+        userId,
+        cart,
+        selectedItems: selectedItemIds && selectedItemIds.length > 0 ? itemsToValidate : undefined,
+        products: productMap,
+        paymentMethod,
+        shippingAddress,
+        subtotal,
+        shipping,
+        discount,
+        total,
+      } as ValidatedCartContext;
+    })(),
+    (error: unknown) => error as PaymentError
+  );
+};
+
 // Step 2: Apply Promo Code (optional)
 export const applyPromoCode = (
   promoCodeStr?: string
@@ -395,8 +474,13 @@ export const checkoutPipeline = (
   userId: UserId,
   paymentMethod: PaymentMethod,
   shippingAddress: string,
-  selectedItemIds?: string[]
+  selectedItemIds?: string[],
+  isDirectCheckout?: boolean
 ): ResultAsync<PaymentSuccess, PaymentError> => {
+  if (isDirectCheckout) {
+    return validateItems(userId, paymentMethod, shippingAddress, selectedItemIds)
+    .andThen(createOrder);
+  }
   return validateCart(userId, paymentMethod, shippingAddress, selectedItemIds)
     .andThen(createOrder);
 };

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       await validateRequestBody(request, checkoutSchema),
       async (data) => {
 
-        const { userId, paymentMethod, shippingAddress, items } = data as { userId: string; paymentMethod: string; shippingAddress: string; items?: string[] };
+        const { userId, paymentMethod, shippingAddress, items, isDirectCheckout } = data as { userId: string; paymentMethod: string; shippingAddress: string; items?: string[]; isDirectCheckout?: boolean; };
 
         // Build payment method object
         const payment: PaymentMethod = paymentMethod === 'balance'
@@ -34,7 +34,8 @@ export async function POST(request: Request) {
           userId,
           payment,
           shippingAddress,
-          items // optional selected item IDs to limit checkout
+          items, // optional selected item IDs to limit checkout
+          isDirectCheckout
         );
 
         // Handle checkout result

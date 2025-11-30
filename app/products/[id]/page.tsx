@@ -110,25 +110,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       try {
         setIsBuyingNow(true);
 
-        try {
-          const current = await cartAPI.getCart(user.id);
-          const items = current.cart?.items || [];
-          await Promise.all(items.map(async (it: CartItem) => {
-            const pid = it.productId || '';
-            if (pid && pid !== productId) {
-              try {
-                await cartAPI.removeItem(user.id, pid);
-              } catch (e) {
-                console.error('Failed to remove cart item during Buy Now:', pid, e);
-              }
-            }
-          }));
-        } catch (e) {
-          console.error('Failed to fetch/clean cart before Buy Now:', e);
-        }
-
-        await cartAPI.addToCart(user.id, productId, quantity);
-        router.push('/checkout');
+        const encoded = encodeURIComponent(`${productId}:${quantity}`);
+        router.push(`/checkout?items=${encoded}&direct=true`);
       } catch (error: unknown) {
         console.error('Buy Now failed:', error);
         const msg = 'Failed to start checkout';

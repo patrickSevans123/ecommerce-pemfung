@@ -80,27 +80,63 @@ export default function CheckoutPage() {
 
     try {
       setIsLoading(true);
-      const { cart } = await cartAPI.getCart(user.id);
 
-      const itemsWithProducts = await Promise.all(cart.items.map(fetchCartItemWithProduct));
-      // If `items` query param present, it contains comma-separated productIds to include
+      // get user's cart (may be used to derive quantities if selected items are already in cart)
+      const { cart } = await cartAPI.getCart(user.id);
       const itemsParam = searchParams?.get('items');
+
+      // parse items param: allow entries like `id` or `id:qty`, comma-separated
+      const selectedEntries: { id: string; quantity?: number }[] = [];
       if (itemsParam) {
-        const selectedIds = itemsParam.split(',').map((s) => decodeURIComponent(s));
-        const filtered = itemsWithProducts.filter((it) => selectedIds.includes(it.productId));
-        setCartItems(filtered);
-      } else {
-        setCartItems(itemsWithProducts);
+        itemsParam.split(',').forEach((raw) => {
+          const dec = decodeURIComponent(raw.trim());
+          if (!dec) return;
+          const [idPart, qtyPart] = dec.split(':');
+          const pid = idPart;
+          const qty = qtyPart ? parseInt(qtyPart, 10) : undefined;
+          if (pid) selectedEntries.push({ id: pid, quantity: Number.isFinite(qty) ? qty : undefined });
+        });
       }
 
-      // Validate cart
-      if (cart.items.length > 0) {
-        try {
-          const validationItems = cart.items.map((item) => ({
-            productId: extractProductId(item) || '',
-            quantity: item.quantity,
-          }));
+      // Build a map from cart items for quick lookup
+      const cartMap = new Map<string, { productId: string; quantity: number }>();
+      (cart.items || []).forEach((it) => {
+        const pid = extractProductId(it) || '';
+        if (pid) cartMap.set(pid, { productId: pid, quantity: it.quantity });
+      });
 
+      const itemsWithProducts: CartItemWithProduct[] = [];
+
+      if (selectedEntries.length > 0) {
+        // For each selected entry, prefer cart quantity if present, otherwise use provided quantity or 1
+        for (const entry of selectedEntries) {
+          const inCart = cartMap.get(entry.id);
+          const qty = inCart ? inCart.quantity : entry.quantity ?? 1;
+          // If product exists in cart, fetch product details via helper which accepts cart-like input
+          if (inCart) {
+            const item = await fetchCartItemWithProduct({ productId: entry.id, quantity: qty });
+            itemsWithProducts.push(item);
+          } else {
+            // Not in cart — fetch product directly and construct item
+            const item = await fetchCartItemWithProduct({ productId: entry.id, quantity: qty });
+            itemsWithProducts.push(item);
+          }
+        }
+        setCartItems(itemsWithProducts);
+      } else {
+        // No selection: show full cart
+        const allItems = await Promise.all((cart.items || []).map(fetchCartItemWithProduct));
+        setCartItems(allItems);
+      }
+
+      // Validate either the selected items or the whole cart depending on presence
+      const validationItems = (selectedEntries.length > 0
+        ? selectedEntries.map((e) => ({ productId: e.id, quantity: e.quantity ?? (cartMap.get(e.id)?.quantity ?? 1) }))
+        : (cart.items || []).map((item) => ({ productId: extractProductId(item) || '', quantity: item.quantity }))
+      ).filter((v) => v.productId);
+
+      if (validationItems.length > 0) {
+        try {
           const validation = await cartAPI.validateCart(user.id, validationItems);
           if (validation && !validation.valid && validation.errors) {
             setValidationErrors(aggregateValidationErrors(validation.errors));
@@ -196,6 +232,7 @@ export default function CheckoutPage() {
       }
 
       // include selected items (if any) passed via query param so server creates order for selected items only
+      const isDirectCheckout = searchParams?.get('direct') === 'true';
       const itemsParam = searchParams?.get('items');
       const items = itemsParam ? itemsParam.split(',').map((s) => decodeURIComponent(s)) : undefined;
 
@@ -204,6 +241,7 @@ export default function CheckoutPage() {
         paymentMethod,
         shippingAddress,
         promoCode: appliedPromo?.code,
+        isDirectCheckout: isDirectCheckout,
       };
       if (items && items.length > 0) payload.items = items;
 

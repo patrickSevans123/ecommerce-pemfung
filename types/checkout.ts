@@ -6,6 +6,7 @@ export interface CheckoutPayload {
   shippingAddress: string;
   promoCode?: string;
   items?: string[];
+  isDirectCheckout?: boolean;
 }
 
 export interface CheckoutRequest {
