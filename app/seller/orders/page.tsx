@@ -69,12 +69,18 @@ export default function SellerOrdersPage() {
   const confirmTracking = async () => {
     if (!selectedOrderId) return;
     const orderId = selectedOrderId;
+    // Frontend validation: tracking number must be provided
+    if (!trackingValue || trackingValue.trim() === '') {
+      showMessage('Validation error', 'Tracking number is required');
+      return;
+    }
+
     try {
       setActionLoading(orderId);
       const res = await fetch(`/api/orders/${orderId}/transition`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event: { type: 'Ship', trackingNumber: trackingValue || '' } }),
+        body: JSON.stringify({ event: { type: 'Ship', trackingNumber: trackingValue } }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || json?.message || 'Failed');

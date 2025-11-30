@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { notificationsAPI } from '@/utils/api';
+import { notificationsAPI, productsAPI } from '@/utils/api';
 import { Notification } from '@/types/api';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';
+import { useAuthStore } from '@/store/authStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { NotificationList } from '@/components/notifications/notification-list';
@@ -17,6 +18,13 @@ export default function SellerDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { token } = useAuthStore();
+
+  // Sales metrics (null means unknown / not available)
+  const [totalProducts, setTotalProducts] = useState<number | null>(null);
+  const [totalSales, setTotalSales] = useState<number | null>(null);
+  const [ordersCount, setOrdersCount] = useState<number | null>(null);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -101,6 +109,60 @@ export default function SellerDashboard() {
     };
   }, [user?.id, user?.role]);
 
+  // Fetch overview metrics + product count
+  useEffect(() => {
+    if (!user?.id || user?.role !== 'seller') return;
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const loadOverview = async () => {
+      setIsLoadingOverview(true);
+
+      try {
+        // Overview (orders + revenue)
+        const res = await fetch(`/api/analytics/${user.id}/overview`, { signal });
+        if (res.ok) {
+          const json = await res.json();
+          const data = json?.data;
+          setTotalSales(typeof data?.totalSales === 'number' ? data.totalSales : null);
+          setOrdersCount(typeof data?.orderCount === 'number' ? data.orderCount : null);
+        } else if (res.status === 404) {
+          setTotalSales(null);
+          setOrdersCount(null);
+        } else {
+          console.warn('Failed to load overview:', res.status, await res.text());
+          setTotalSales(null);
+          setOrdersCount(null);
+        }
+
+        // Products count for this seller (requires token)
+        if (token) {
+          try {
+            const prods = await productsAPI.getBySeller(token, user.id);
+            setTotalProducts(Array.isArray(prods) ? prods.length : null);
+          } catch (err) {
+            console.warn('Failed to load products for seller:', err);
+            setTotalProducts(null);
+          }
+        } else {
+          setTotalProducts(null);
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        console.error('Error fetching seller overview:', err);
+        setTotalProducts(null);
+        setTotalSales(null);
+        setOrdersCount(null);
+      } finally {
+        setIsLoadingOverview(false);
+      }
+    };
+
+    loadOverview();
+    return () => controller.abort();
+  }, [user?.id, user?.role, token]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -151,15 +213,15 @@ export default function SellerDashboard() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Products</span>
-                <span className="text-2xl font-bold">0</span>
+                <span className="text-2xl font-bold">{isLoadingOverview ? '...' : (totalProducts ?? '-')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Sales</span>
-                <span className="text-2xl font-bold">$0</span>
+                <span className="text-2xl font-bold">{isLoadingOverview ? '...' : (totalSales != null ? `$${totalSales.toFixed(2)}` : '-')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Orders</span>
-                <span className="text-2xl font-bold">0</span>
+                <span className="text-2xl font-bold">{isLoadingOverview ? '...' : (ordersCount ?? '-')}</span>
               </div>
             </CardContent>
           </Card>
@@ -175,8 +237,8 @@ export default function SellerDashboard() {
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/seller/products">View Products</Link>
               </Button>
-              <Button className="w-full" variant="outline" disabled>
-                View Analytics
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/seller/dashboard/analytics">View Analytics</Link>
               </Button>
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/seller/orders">Manage Orders</Link>
@@ -209,31 +271,7 @@ export default function SellerDashboard() {
           </Card>
         </div>
 
-        {/* Features Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Features</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              You now have access to:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-600 mb-6">
-              <li>✅ Product management (create, edit, delete)</li>
-            </ul>
-            <p className="text-gray-600 mb-2">
-              Coming soon:
-            </p>
-            <ul className="list-disc list-inside space-y-2 text-gray-600">
-              <li>Order management for your products</li>
-              <li>Advanced sales analytics dashboard</li>
-              <li>Revenue tracking and reporting</li>
-              <li>Customer insights</li>
-              <li>Promo code management</li>
-              <li>Inventory management</li>
-            </ul>
-          </CardContent>
-        </Card>
+        {/* Features Section removed per request */}
       </main>
     </div>
   );

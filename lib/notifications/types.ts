@@ -1,14 +1,14 @@
-import { SystemEvent, UserId, ProductId, OrderId, ReviewId } from '@/lib/domain/types';
+import { SystemEvent, ProductId } from '@/lib/domain/types';
 
-// Notification data types for persistence
+// Deterministic notification payload shape used by the notifications system
 export interface NotificationData {
-  type: SystemEvent['type'];
-  userId?: UserId;
-  sellerId?: UserId;
-  productId?: ProductId;
-  orderId?: OrderId;
-  data: Record<string, any>;
-  createdAt: Date;
+  productName?: string;
+  quantity?: number;
+  amount?: number;
+  trackingNumber?: string;
+  currentStock?: number;
+  orderId?: string;
+  reason?: string;
 }
 
 // Subscription types

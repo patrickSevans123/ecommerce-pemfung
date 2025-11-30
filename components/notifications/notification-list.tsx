@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Notification } from '@/types/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Bell, Package, CreditCard, Truck, AlertTriangle, Star } from 'lucide-react';
 
 interface NotificationListProps {
@@ -99,10 +97,10 @@ const formatNotificationMessage = (notification: Notification, userRole?: 'buyer
     case 'ORDER_SHIPPED':
       if (userRole === 'seller') {
         const tracking = data.trackingNumber ? ` - Tracking: ${data.trackingNumber}` : '';
-        return `� Order shipped successfully${tracking}`;
+        return `🚚 Order shipped successfully${tracking}`;
       }
       const tracking = data.trackingNumber ? ` - Tracking: ${data.trackingNumber}` : '';
-      return `� Your order is on the way${tracking}`;
+      return `🚚 Your order is on the way${tracking}`;
     
     case 'ORDER_DELIVERED':
       if (userRole === 'seller') {
@@ -215,7 +213,7 @@ export function NotificationList({ notifications, isLoading, userRole }: Notific
         <CardContent className="pt-6 text-center">
           <Bell className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications</h3>
-          <p className="text-gray-500">You don't have any notifications yet.</p>
+          <p className="text-gray-500">You do not have any notifications yet.</p>
         </CardContent>
       </Card>
     );

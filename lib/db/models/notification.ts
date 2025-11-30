@@ -50,7 +50,7 @@ export interface NotificationDocument extends mongoose.Document {
   sellerId?: string;
   productId?: string;
   orderId?: string;
-  data: Record<string, any>;
+  data: NotificationData;
   createdAt?: Date;
   updatedAt?: Date;
 }

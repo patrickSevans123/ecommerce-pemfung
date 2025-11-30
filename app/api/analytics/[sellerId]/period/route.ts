@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateStatistics, serializeStats } from '@/lib/analytics/service';
 import Order from '@/lib/db/models/order';
 import mongoose from 'mongoose';
-import { sub, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 export async function GET(
   request: NextRequest,
@@ -50,7 +50,7 @@ export async function GET(
     return NextResponse.json({ message: 'No orders found for this period' }, { status: 404 });
   }
 
-  const stats = calculateStatistics(orders);
+  const stats = calculateStatistics(orders, sellerObjectId);
   const serialized = serializeStats(stats);
 
   return NextResponse.json({
