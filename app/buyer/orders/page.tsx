@@ -16,10 +16,11 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Order, OrderItem } from '@/types';
 
 export default function BuyerOrdersPage() {
   const { isLoading, user } = useProtectedRoute(['buyer']);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [msgDialogOpen, setMsgDialogOpen] = useState(false);
@@ -47,7 +48,7 @@ export default function BuyerOrdersPage() {
       const payload = await res.json();
       // API may return either an envelope { success, data } or the raw array
       const ordersArray = Array.isArray(payload) ? payload : payload?.data ?? [];
-      setOrders(ordersArray);
+      setOrders(ordersArray as Order[]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -126,12 +127,12 @@ export default function BuyerOrdersPage() {
                   </tr>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((order) => (
+                  {orders.map((order: Order) => (
                     <TableRow key={order._id}>
                       <TableCell className="font-mono text-xs">#{order._id}</TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          {(order.items || []).map((it: any, idx: number) => (
+                          {(order.items || []).map((it: OrderItem, idx: number) => (
                             <div key={idx} className="text-sm text-gray-700">
                               <span className="font-medium">{it.name}</span>
                               <span className="ml-2 text-xs text-gray-500">x{it.quantity}</span>
