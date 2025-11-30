@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Order, OrderItem } from '@/types';
+import ReviewForm from '@/components/review/ReviewForm';
 
 export default function BuyerOrdersPage() {
   const { isLoading, user } = useProtectedRoute(['buyer']);
@@ -29,11 +30,24 @@ export default function BuyerOrdersPage() {
 
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewProductId, setReviewProductId] = useState<string | null>(null);
 
   const showMessage = (title: string, body: string) => {
     setMsgTitle(title);
     setMsgBody(body);
     setMsgDialogOpen(true);
+  };
+
+  const openReviewForProduct = (productId: string | null) => {
+    if (!productId) return;
+    setReviewProductId(productId);
+    setReviewDialogOpen(true);
+  };
+
+  const onReviewCreated = () => {
+    setReviewDialogOpen(false);
+    setReviewProductId(null);
   };
 
   useEffect(() => {
@@ -67,20 +81,20 @@ export default function BuyerOrdersPage() {
     if (!orderId) return;
     try {
       setActionLoading(orderId);
-      
+
       // Call the transition API to mark as delivered
       const res = await fetch(`/api/orders/${orderId}/transition`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: { type: 'Deliver' } }),
       });
-      
+
       const json = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(json?.error || json?.message || 'Failed to update order');
       }
-      
+
       await fetchOrders();
       showMessage('Success', 'Order marked as delivered');
     } catch (err) {
@@ -137,6 +151,18 @@ export default function BuyerOrdersPage() {
                               <span className="font-medium">{it.name}</span>
                               <span className="ml-2 text-xs text-gray-500">x{it.quantity}</span>
                               <span className="ml-2 text-sm">{formatCurrency((it.price || 0) * (it.quantity || 1))}</span>
+                              {order.status?.status === 'delivered' && (
+                                (() => {
+                                  // item's product may be a string id or an object with _id
+                                  const pid = it.product._id;
+                                  if (!pid) return null;
+                                  return (
+                                    <Button size="sm" variant="ghost" className="ml-3" onClick={() => openReviewForProduct(pid as string)}>
+                                      Write Review
+                                    </Button>
+                                  );
+                                })()
+                              )}
                             </div>
                           ))}
                         </div>
@@ -183,6 +209,23 @@ export default function BuyerOrdersPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
             <Button onClick={() => doMarkSent(confirmOrderId)} disabled={!!actionLoading}>{actionLoading ? 'Updating...' : 'Confirm'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Write a review</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            {reviewProductId ? (
+              <ReviewForm productId={reviewProductId} onCreated={onReviewCreated} />
+            ) : (
+              <div className="text-sm text-gray-600">No product selected</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReviewDialogOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

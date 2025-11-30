@@ -7,10 +7,9 @@ import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
 import { productsAPI, cartAPI } from '@/utils/api';
 import { reviewsAPI } from '@/utils/api/reviews';
-import ReviewForm from '@/components/review/ReviewForm';
 import ReviewList from '@/components/review/ReviewList';
 import { Review } from '@/types';
-import { CartItem, Product } from '@/types';
+import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/navbar';
 import { Input } from '@/components/ui/input';
@@ -202,9 +201,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
-                      className={`aspect-square bg-gray-100 rounded overflow-hidden border-2 relative ${
-                        selectedImage === index ? 'border-gray-900' : 'border-transparent'
-                      }`}
+                      className={`aspect-square bg-gray-100 rounded overflow-hidden border-2 relative ${selectedImage === index ? 'border-gray-900' : 'border-transparent'
+                        }`}
                     >
                       <Image
                         src={image}
@@ -226,7 +224,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   {product.category}
                 </div>
                 <h1 className="text-3xl font-bold mb-3">{product.title}</h1>
-                
+
                 {/* Seller info */}
                 {(() => {
                   const sellerObj = product.seller;
@@ -395,34 +393,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         <div className="mt-8">
           <div className="bg-white rounded-lg border overflow-hidden">
             <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Reviews List - Takes up 2 columns */}
-                <div className="lg:col-span-2">
-                  <ReviewList reviews={reviews} stats={reviewsStats} />
-                </div>
-
-                {/* Review Form - Takes up 1 column */}
-                <div className="lg:border-l lg:pl-8">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-900">Write a Review</h3>
-                  {isAuthenticated && user?.role === 'buyer' ? (
-                    <ReviewForm
-                      productId={product._id}
-                      onCreated={(r) => {
-                        setReviews((prev) => [r, ...prev]);
-                        if (productId) fetchReviews(productId);
-                      }}
-                    />
-                  ) : (
-                    <div className="py-6 text-center border border-gray-200 rounded-lg bg-gray-50">
-                      <p className="text-gray-600 text-sm">
-                        {isAuthenticated && user?.role === 'seller'
-                          ? 'Only buyers can submit reviews.'
-                          : 'Log in as a buyer to submit a review.'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ReviewList reviews={reviews} stats={reviewsStats} />
             </div>
           </div>
         </div>
