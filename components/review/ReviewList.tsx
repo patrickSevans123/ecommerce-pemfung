@@ -16,8 +16,8 @@ const StarRating = ({ rating }: { rating: number }) => {
         <Star
           key={star}
           className={`w-4 h-4 ${star <= rating
-              ? 'fill-yellow-400 text-yellow-400'
-              : 'fill-gray-200 text-gray-200'
+            ? 'fill-yellow-400 text-yellow-400'
+            : 'fill-gray-200 text-gray-200'
             }`}
         />
       ))}
@@ -27,6 +27,35 @@ const StarRating = ({ rating }: { rating: number }) => {
 
 export default function ReviewList({ reviews, stats }: Props) {
   const [sortBy, setSortBy] = React.useState('recent');
+
+  const sortedReviews = React.useMemo(() => {
+    const list = Array.isArray(reviews) ? [...reviews] : [];
+    switch (sortBy) {
+      case 'highest':
+        return list.sort((a, b) => {
+          const diff = (b.rating || 0) - (a.rating || 0);
+          if (diff !== 0) return diff;
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tb - ta;
+        });
+      case 'lowest':
+        return list.sort((a, b) => {
+          const diff = (a.rating || 0) - (b.rating || 0);
+          if (diff !== 0) return diff;
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tb - ta;
+        });
+      case 'recent':
+      default:
+        return list.sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tb - ta;
+        });
+    }
+  }, [reviews, sortBy]);
 
   return (
     <div className="space-y-6">
@@ -49,7 +78,6 @@ export default function ReviewList({ reviews, stats }: Props) {
           className="px-3 py-1.5 border-b-2 border-gray-900 text-sm font-medium bg-transparent focus:outline-none cursor-pointer"
         >
           <option value="recent">Most Recent</option>
-          <option value="helpful">Most Helpful</option>
           <option value="highest">Highest Rating</option>
           <option value="lowest">Lowest Rating</option>
         </select>
@@ -62,7 +90,7 @@ export default function ReviewList({ reviews, stats }: Props) {
         </div>
       ) : (
         <div className="space-y-6">
-          {reviews.map((review) => (
+          {sortedReviews.map((review) => (
             <div
               key={review._id}
               className="border-b border-gray-200 pb-6 last:border-0"
