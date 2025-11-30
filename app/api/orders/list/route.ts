@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
       .populate('user', 'email name')
-      .populate('items.product', 'title price')
+      .populate('items.product')
       .lean();
 
     return successResponse(orders);
