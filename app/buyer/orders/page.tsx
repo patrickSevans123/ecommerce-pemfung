@@ -20,6 +20,7 @@ import {
   ShoppingBag,
   Star
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function BuyerOrdersPage() {
   const { isLoading, user } = useProtectedRoute(['buyer']);
@@ -207,27 +208,31 @@ export default function BuyerOrdersPage() {
                       <div key={idx} className="p-4 md:p-6 flex flex-col sm:flex-row gap-6 hover:bg-gray-50/50 transition-colors">
 
                         {/* Product Image */}
-                        <div className="relative w-full sm:w-20 h-20 bg-gray-100 rounded-lg shrink-0 flex items-center justify-center">
-                          {item.product.images && item.product.images.length > 0 ? (
-                            <Image
-                              src={item.product.images[0]}
-                              alt={item.product.title}
-                              fill
-                              objectFit="cover"
-                              className="rounded-lg"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="text-gray-500">No Image</span>
-                            </div>
-                          )}
-                        </div>
+                        <Link href={`/products/${item.product._id}`}>
+                          <div className="relative w-full sm:w-20 h-20 bg-gray-100 rounded-lg shrink-0 flex items-center justify-center hover:opacity-80 transition-opacity">
+                            {item.product.images && item.product.images.length > 0 ? (
+                              <Image
+                                src={item.product.images[0]}
+                                alt={item.product.title}
+                                fill
+                                objectFit="cover"
+                                className="rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-gray-500">No Image</span>
+                              </div>
+                            )}
+                          </div>
+                        </Link>
 
                         {/* Item Details */}
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col md:flex-row justify-between gap-2">
                             <div>
-                              <h4 className="font-semibold text-gray-900 truncate text-base">{item.name}</h4>
+                              <Link href={`/products/${item.product._id}`}>
+                                <h4 className="font-semibold text-gray-900 truncate text-base hover:text-blue-600 cursor-pointer transition-colors">{item.name}</h4>
+                              </Link>
                               <p className="text-sm text-gray-500 mt-1">Quantity: <span className="font-medium text-gray-900">{item.quantity}</span></p>
                             </div>
                             <p className="font-semibold text-gray-900 text-lg">{formatCurrency((item.price || 0) * (item.quantity || 1))}</p>
