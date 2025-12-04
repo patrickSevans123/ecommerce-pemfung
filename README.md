@@ -205,6 +205,38 @@ products.filter(electronicsFilter);
 ```
 **Explanation**: The `byCategory` function doesn't filter immediately. Instead, it returns a *new function* that remembers the category you passed. This makes it easy to create reusable filters like `electronicsFilter` or `furnitureFilter`.
 
+### 8. Currying
+- **What it is**: Transforming a function that takes multiple arguments into a sequence of functions each taking a single argument.
+- **Why it matters**: Currying helps create more reusable, partially-applied helpers that match the shape expected by higher-order functions (like `map`, `filter`, or `foldMap`). It keeps code concise and avoids manual wrapper functions.
+- **Where to find it**: `lib/analytics` (example usage in analytics aggregation)
+
+**Code Example:**
+```typescript
+// curried, two-stage function
+// Stage 1: orderToStats(sellerId) -> (order: OrderDocument) => SalesStatistics
+export const orderToStats = (sellerId: string) => (order: OrderDocument): SalesStatistics => {
+  if (order.sellerId !== sellerId) return monoidSalesStatistics.empty;
+  return {
+    totalSales: order.totalAmount,
+    orderCount: 1,
+    // ... other derived fields
+  };
+};
+
+// uncurried equivalent (takes two args)
+export const orderToStatsUncurried = (sellerId: string, order: OrderDocument): SalesStatistics =>
+  orderToStats(sellerId)(order);
+
+// Usage with foldMap (which expects a single-argument function `order => SalesStatistics`)
+// Curried version fits directly:
+const stats = foldMap(monoidSalesStatistics)(orders, orderToStats(sellerId));
+
+// Without currying you'd need a wrapper to adapt the uncurried function:
+const statsWithoutCurry = foldMap(monoidSalesStatistics)(orders, (order) => orderToStatsUncurried(sellerId, order));
+```
+
+**Explanation**: `orderToStats` is curried in two stages: first you supply `sellerId`, getting back a single-argument function that converts an `OrderDocument` into `SalesStatistics`. This matches `foldMap`'s required shape and avoids writing small wrapper functions for every case.
+
 ### 8. Event Sourcing
 - **What it is**: A pattern where state is determined by a sequence of events rather than just the current state.
 - **Why it matters**: Provides a complete audit trail, enables time-travel debugging, and fits perfectly with immutable data structures.
